@@ -9,7 +9,7 @@ import numpy as np
 #-------------
 # 1 load a 3d obj mesh into blender's environment
 #-------------
-objFilename = 'harbour'
+objFilename = 'horses'
 objFileType = '.obj'
 objFileDir = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/'
 objFilePath = objFileDir + objFilename + objFileType
@@ -106,10 +106,14 @@ bpy.context.scene.update()
 # 6 apply a modifier to the object
 #-------------
 
+
+
 #-------------
 # 7 save renders
 #-------------
-
+renderFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender.jpg'
+bpy.data.scenes["Scene"].render.filepath = renderFilePath
+bpy.ops.render.render( write_still=True )
 
 
 
