@@ -47,15 +47,16 @@ for object in bpy.data.objects:
 print('Loaded 3d object is present in the world at : ', my3dobj.location)
 print('The render camera is present in the world at : ', mycam.location)
 
-# compute center of mass of the 3d object
-my3dobj_com = Vector((0.0, 0.0, 0.0))
-nVertices = len(my3dobj.data.vertices)
-for vertex in my3dobj.data.vertices:
-    my3dobj_com = my3dobj_com + vertex.co
-my3dobj_com /= nVertices
 
-print('Center of mass of the loaded 3d oject = ', my3dobj_com)
-    
+print('Placing the camera 30 centimeters from the template ...')
+mycam.location = my3dobj.location + 50 * my3dobj.matrix_world * Vector((1.0, 0.0, 0.0))
+
+print('Turning the camera to face the origin of the 3d object')
+direction = my3dobj.matrix_world * Vector((-1.0, 0.0, 0.0))
+# point the cameras '-Z' and use its 'Y' as up
+rot_quat = direction.to_track_quat('-Z', 'Y')
+# assume we're using euler rotation
+mycam.rotation_euler = rot_quat.to_euler()
 
 #-------------
 # 3 rotate the object in camera frame 
@@ -66,28 +67,30 @@ print('Center of mass of the loaded 3d oject = ', my3dobj_com)
 #-------------
 # 4 translate the object in camera frame
 #-------------
-# unit vector from camera's origin to the 3d object's origin
-vecCamTo3dObj = (my3dobj.location - mycam.location)
-# normalisation 
-vecCamTo3dObj = vecCamTo3dObj/np.sqrt(np.sum(np.square(vecCamTo3dObj)))
-
-# translation along the view direction
-my3dobj.location += 50 * vecCamTo3dObj 
+my3dobj.location += mycam.matrix_world * Vector((10.0, 0.0, 0.0))
 
 # position the lamp X units from object's origin along it's x direction
 my3dobj_xdir = Vector((1.0, 0.0, 0.0))
 my3dobj_xdir_inWorld = my3dobj.matrix_world * my3dobj_xdir
-print(my3dobj_xdir)
-print(my3dobj_xdir_inWorld)
-
 bpy.data.objects['Lamp'].location = my3dobj.location + 5*my3dobj_xdir_inWorld
 
 #-------------
-# 5 apply a modifier to the object
+# 5 compute center of mass of the 3d object
+#-------------
+my3dobj_com = Vector((0.0, 0.0, 0.0))
+nVertices = len(my3dobj.data.vertices)
+for vertex in my3dobj.data.vertices:
+    my3dobj_com = my3dobj_com + vertex.co
+my3dobj_com /= nVertices
+print('Center of mass of the loaded 3d oject = ', my3dobj_com)
+
+
+#-------------
+# 6 apply a modifier to the object
 #-------------
 
 #-------------
-# 6 save renders
+# 7 save renders
 #-------------
 
 
