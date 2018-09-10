@@ -11,7 +11,7 @@ import numpy as np
 #-------------
 objFilename = 'harbour'
 objFileType = '.obj'
-objFileDir = '/home/bokoo/Desktop/sftUsingDl/data/3dObjs/'
+objFileDir = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/'
 objFilePath = objFileDir + objFilename + objFileType
 
 importedObj = bpy.ops.import_scene.obj(filepath=objFilePath)
