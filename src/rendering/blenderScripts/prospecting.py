@@ -48,7 +48,7 @@ print('Loaded 3d object is present in the world at : ', my3dobj.location)
 print('The render camera is present in the world at : ', mycam.location)
 
 
-print('Placing the camera 30 centimeters from the template ...')
+print('Placing the camera 50 centimeters from the template ...')
 mycam.location = my3dobj.location + 50 * my3dobj.matrix_world * Vector((1.0, 0.0, 0.0))
 
 print('Turning the camera to face the origin of the 3d object')
@@ -57,32 +57,49 @@ direction = my3dobj.matrix_world * Vector((-1.0, 0.0, 0.0))
 rot_quat = direction.to_track_quat('-Z', 'Y')
 # assume we're using euler rotation
 mycam.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.update()
 
 #-------------
 # 3 rotate the object in camera frame 
 #-------------
-# axis-angle
+# axis-angle (world-axis)
+# Apply the rotation matrix to the object's world matrix
+#my3dobj.matrix_world = mathutils.Matrix.Rotation(np.pi/10.0, 4, Vector((0.0, 1.0, 0.0)))*my3dobj.matrix_world
+#bpy.context.scene.update()
+
+# axis-pivot-angle
+pivot_world = mycam.matrix_world * Vector((0.0, 0.0, -20.0))
+axis_world = Vector((0.0, 0.0, 1.0))
+angle = 10.0*(2*np.pi/180.0)
+# pivot-axis-angle = subtract pivot, then axis-angle rotation
+my3dobj.location -= pivot_world
+bpy.context.scene.update()
+my3dobj.matrix_world = mathutils.Matrix.Rotation(angle, 4, axis_world) * my3dobj.matrix_world
+my3dobj.location += pivot_world
+bpy.context.scene.update()
+
+
 # euler angles
 
 #-------------
 # 4 translate the object in camera frame
 #-------------
-my3dobj.location += mycam.matrix_world * Vector((10.0, 0.0, 0.0))
+#my3dobj.location += mycam.matrix_world * Vector((10.0, 0.0, 0.0))
 
 # position the lamp X units from object's origin along it's x direction
-my3dobj_xdir = Vector((1.0, 0.0, 0.0))
-my3dobj_xdir_inWorld = my3dobj.matrix_world * my3dobj_xdir
-bpy.data.objects['Lamp'].location = my3dobj.location + 5*my3dobj_xdir_inWorld
+bpy.data.objects['Lamp'].location = mycam.matrix_world * Vector((0.0, 0.0, 0.0))
+bpy.context.scene.update()
 
-#-------------
-# 5 compute center of mass of the 3d object
-#-------------
-my3dobj_com = Vector((0.0, 0.0, 0.0))
-nVertices = len(my3dobj.data.vertices)
-for vertex in my3dobj.data.vertices:
-    my3dobj_com = my3dobj_com + vertex.co
-my3dobj_com /= nVertices
-print('Center of mass of the loaded 3d oject = ', my3dobj_com)
+#
+##-------------
+## 5 compute center of mass of the 3d object
+##-------------
+#my3dobj_com = Vector((0.0, 0.0, 0.0))
+#nVertices = len(my3dobj.data.vertices)
+#for vertex in my3dobj.data.vertices:
+#    my3dobj_com = my3dobj_com + vertex.co
+#my3dobj_com /= nVertices
+#print('Center of mass of the loaded 3d oject = ', my3dobj_com)
 
 
 #-------------
@@ -92,6 +109,8 @@ print('Center of mass of the loaded 3d oject = ', my3dobj_com)
 #-------------
 # 7 save renders
 #-------------
+
+
 
 
 
