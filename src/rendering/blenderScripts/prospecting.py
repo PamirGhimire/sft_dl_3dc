@@ -11,7 +11,7 @@ import numpy as np
 #-------------
 objFilename = 'horses'
 objFileType = '.obj'
-objFileDir = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/'
+objFileDir = '/home/ghimire/Desktop/sft_dl_3dc/data/3dObjs/'
 objFilePath = objFileDir + objFilename + objFileType
 
 importedObj = bpy.ops.import_scene.obj(filepath=objFilePath)
@@ -105,13 +105,27 @@ bpy.context.scene.update()
 #-------------
 # 6 apply a modifier to the object
 #-------------
+# transform object to a predefined pose in the world space (0, 0, 0, 90, 0, 0)
+# select the object (right click on the object)
+# add a mesh: shift+a > curve > Bezier
+# change 'dimension' (in n-panel) of the added bezier curve
+#   x = 10 cm, y = 3.7141 cm, z = 0 cm
+# change the pose of the curve (0, 0, 0, 0, 90, -90)
+# make sure that nothing is selected in the 'path/curve deform' in curve shape
+# change the 'shape' of the curve from 3D to 2D
+# right-click select the curve, tab into edit mode, change curve vertices to...
+
+# select the object (right click on the object)
+# add a curve modifier
+# select 'BezierCurve' as 'object'
+# rotate the curve about x-axis
 
 
 
 #-------------
 # 7 save renders
 #-------------
-renderFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender.jpg'
+renderFilePath = '/home/ghimire/Desktop/sft_dl_3dc/data/training_defRenders/testRender.jpg'
 bpy.data.scenes["Scene"].render.filepath = renderFilePath
 bpy.ops.render.render( write_still=True )
 
