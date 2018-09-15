@@ -1,2 +1,4 @@
 *.blend*
 data/
+*.mtl
+
