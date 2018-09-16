@@ -60,7 +60,7 @@ mycam.rotation_euler = rot_quat.to_euler()
 bpy.context.scene.update()
 
 #-------------
-# 3 rotate the object in camera frame 
+# 4 rotate the object in camera frame 
 #-------------
 # axis-angle (world-axis)
 # Apply the rotation matrix to the object's world matrix
@@ -82,7 +82,7 @@ bpy.context.scene.update()
 # euler angles
 
 #-------------
-# 4 translate the object in camera frame
+# 5 translate the object in camera frame
 #-------------
 #my3dobj.location += mycam.matrix_world * Vector((10.0, 0.0, 0.0))
 
@@ -92,7 +92,7 @@ bpy.context.scene.update()
 
 #
 ##-------------
-## 5 compute center of mass of the 3d object
+## 6 compute center of mass of the 3d object
 ##-------------
 #my3dobj_com = Vector((0.0, 0.0, 0.0))
 #nVertices = len(my3dobj.data.vertices)
@@ -108,22 +108,18 @@ bpy.context.scene.update()
 # transform object to a predefined pose in the world space (0, 0, 0, pi/2, 0, 0)
 my3dobj.location = Vector((0.0, 0.0, 0.0))
 my3dobj.rotation_euler = Vector((np.pi/2.0, 0.0, 0.0)) 
+bpy.context.scene.update()
 
+## add a bezier curve to the context : shift+a > curve > Bezier
+x= 5
 coordinates = [
-    ((-5, 0, 0), (-10, -5, 0), (0, 5, 0)),
-    ((5, 0, 0), (0, 0, 0), (10, 0, 0))]
-
-#coordinates = [ #center, short arm, long arm
-#    ((-1, 0, 0), (-0.7, 0, 0), (-1, 0.5521, 0)),
-#    ((0, 1, 0), (-0.5521, 1, 0), (0, 0.7, 0))]
-#    ,
-#    ((0, 0, 0), (0, 0.3, 0), (-0.3, 0, 0))
-#]
-
+    ((-x, 0, 0), (-(x+5), -5, 0), ( (x-5), 5, 0)),
+    ((x, 0, 0), (0, 0, 0), ((x+5), 0, 0))]
     
 def MakeCurveQuarter(objname, curvename, cList, origin=(0,0,0)):    
     curvedata = bpy.data.curves.new(name=curvename, type='CURVE')    
     curvedata.dimensions = '2D'    
+    curvedata.use_radius = False
     
     objectdata = bpy.data.objects.new(objname, curvedata)    
     objectdata.location = origin
@@ -144,44 +140,12 @@ def MakeCurveQuarter(objname, curvename, cList, origin=(0,0,0)):
     polyline.use_cyclic_u = False 
 
 MakeCurveQuarter("myBCurveObject", "myBCurve", coordinates)  
+myBCurveObj = bpy.data.objects['myBCurveObject']
+myBCurveObj.select = True
 
-## add a bezier curve to the context : shift+a > curve > Bezier
-## Curve Data:
-#curveData = bpy.data.curves.new('myBCurve', type='CURVE')
-#curveData.dimensions = '3D'
-#curveData.resolution_u = 2
-## set its 4 coordinates ([top-left, top-right, bottom-left, bottom-right]) 
-## when viewdir is s.t. 'y' increases along it (units: centimeters)
-#coords = [(8.0601, -0.742, 0)]#, (1.858, -19.89, 0.167)]#, (-164.67,-28.59,-0.265), (-37.064, 27.821, 0.2583)] 
-## make sure that nothing is selected in the 'path/curve deform' in curve shape
-#curveData.use_radius = False 
-#
-## map coords to spline
-#polyline = curveData.splines.new('BEZIER')
-#polyline.bezier_points.add(len(coords))
-#for i, coord in enumerate(coords):
-#    x,y,z = coord
-#    polyline.bezier_points[i].co = (x, y, z)
-#
-## create Object
-#myBCurveObj = bpy.data.objects.new('myBCurve', curveData)
-#
-## attach to scene and validate context
-#scn = bpy.context.scene
-#scn.objects.link(myBCurveObj)
-#scn.objects.active = myBCurveObj
-#myBCurveObj.select = True
-
-# change 'dimension' (in n-panel) of the added bezier curve
-#   x = 10 cm, y = 3.7141 cm, z = 0 cm
-#myBCurveObj.dimensions = Vector((10.0, 3.7141, 0))
-#current_x, current_y, current_z =  myBCurveObj.dimensions
-#myBCurveObj.dimensions = [10.0, 3.7141, current_z]
-#
-#
-## change the pose of the curve (0, 0, 0, 0, 90, -90)
-#myBCurveObj.location = Vector((0.0, 0.0, 0.0))
-#myBCurveObj.rotation_euler = Vector((0, np.pi/2, -np.pi/2))
+# change the pose of the curve (0, 0, 0, 0, 90, -90)
+myBCurveObj.location = Vector((0.0, 0.0, 0.0))
+myBCurveObj.rotation_euler = Vector((0, np.pi/2, -np.pi/2))
 
 
 # change the 'shape' of the curve from 3D to 2D
@@ -189,16 +153,17 @@ MakeCurveQuarter("myBCurveObject", "myBCurve", coordinates)
 
 # select the object (right click on the object)
 # add a curve modifier
-# select the object (right click on the object)
-# add a curve modifier to the object
-ob = my3dobj
-ob.modifiers.new(name='mysubsurf', type='CURVE')
-#ob.modifiers["mysubsurf"].levels = 2
-bpy.ops.object.modifier_apply(apply_as='DATA', modifier="mysubsurf")
+my3dobj.modifiers.new(name='myBCurveModifier', type='CURVE')
+my3dobj.modifiers['myBCurveModifier'].object = myBCurveObj
 
-# select 'BezierCurve' as 'object'
-# rotate the curve about x-axis
+# move the 3d object a little bit along the 
+my3dobj.location = my3dobj.location + Vector((0, 0, -5))
+bpy.context.scene.update()
 
+# select 'BezierCurve' as 'object', rotate the curve about x-axis
+rotYDeg = 15
+my3dobj.modifiers['myBCurveModifier'].object.rotation_euler.y +=  rotYDeg * np.pi/180.0
+bpy.context.scene.update()
 
 
 #-------------
