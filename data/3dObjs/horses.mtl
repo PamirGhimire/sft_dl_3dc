@@ -10,5 +10,5 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../data/textures/horses.jpg
-map_d ../data/textures/horses.jpg
+map_Kd ../textures/horses.jpg
+map_d ../textures/horses.jpg
