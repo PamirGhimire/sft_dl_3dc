@@ -32,8 +32,8 @@ class Renderer:
         self.mBCurveObj = []
         self.mBCurveModifierName = 'bCurveModifier'
         #mCamera = Camera()
-        self.mRenderWidth = 1900
-        self.mRenderHeght = 1080
+        self.mRenderWidth = 576
+        self.mRenderHeight = 320
 
     # import 3d mesh 
     def f3dObjImport(self, path2Obj):
@@ -158,10 +158,10 @@ class Renderer:
         bpy.context.scene.update()    
         
     # create a render using the render cam
-    def fRendCamRender(self, pathToRender, width, height):
+    def fRendCamRender(self, pathToRender):
         bpy.data.scenes['Scene'].render.filepath = pathToRender
         bpy.data.scenes['Scene'].render.resolution_x = self.mRenderWidth
-        bpy.data.scenes['Scene'].render.resolution_x = self.mRenderHeght
+        bpy.data.scenes['Scene'].render.resolution_y = self.mRenderHeight
         bpy.ops.render.render( write_still=True )
         
     # change render camera's location in 3d object frame
@@ -171,14 +171,16 @@ class Renderer:
         bpy.context.scene.update()
         
     # change render camera's look direction in 3d object frame
-    def fRenderCamSetLookVector(self, lookVector):
-        direction = self.m3dObj.matrix_world * lookVector
+    def fRenderCamSetLookAtPoint(self, pointInWorld):
+        # camera's location in the world
+        loc_camera = self.mRendCamera.matrix_world.to_translation()
+        direction = pointInWorld - loc_camera
         # point the cameras '-Z' and use its 'Y' as up
         rot_quat = direction.to_track_quat('-Z', 'Y')
         # assume we're using euler rotation
         self.mRendCamera.rotation_euler = rot_quat.to_euler()
         bpy.context.scene.update()
-
+        
 #----------------------------------------------------------------------------
 # imports
 import bpy
@@ -187,12 +189,14 @@ import numpy as np
 
 # create a renderer object
 myrend = Renderer()
+myrend.mRenderWidth = 1920
+myrend.mRenderHeight = 1080
 
 # setup lights in the environment : currently in blender startup file
 # camera intrinsics : 35 mm focal length, 32 mm sensor size, image resolution
 
 # import 3d object
-objFilePath = '/home/ghimire/Desktop/sft_dl_3dc/data/3dObjs/horses.obj'
+objFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/horses.obj'
 myrend.f3dObjImport(objFilePath)
 
 # place it at a pre-determined pose
@@ -208,24 +212,32 @@ coordinates = [
 # add a curve modifier to the object
 myrend.fBezierCurveSet(coordinates)
 
-# for n. of desired renders 
+# generate renders
+nDesiredRenders = 10
+# distance between the 3d object and the camera
+rObjCam = 50 #centimeters
+# for n. of desired renders
+for nRender in range(nDesiredRenders): 
+    print('Render counter : ', nRender)
+    
     # change rotation of the curve modifier
+    #myrend.fBezierCurveSetRotationX((np.random.rand() * 2*np.pi - np.pi/2) * np.pi/180.0)
+    myrend.fBezierCurveRotateDeltaX(10.0)
+    
     # move the camera to a random pose wrt the object
+    alpha = (np.random.rand()*180 - 90) * np.pi/180.0
+    theta = (np.random.rand()*180 - 90) * np.pi/180.0
+    x = rObjCam*np.cos(theta)*cos(alpha)
+    y = rObjCam*np.cos(theta)*np.sin(alpha)
+    z = rObjCam*sin(theta) 
+
+    myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
+    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
+
     # save the render
+    pathToRender = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
+    myrend.fRendCamRender(pathToRender)    
+    #myrend.fSaveMeshInCamFrame()
 
-r = 100000
-alpha = (np.random.rand()*360 - 180) * np.pi/180.0
-theta = (np.random.rand()*180 - 90) * np.pi/180.0
-x = r*np.cos(theta)*cos(alpha)
-y = r*np.cos(theta)*np.sin(alpha)
-z = r*sin(theta) 
-
-x =np.random.rand()*100
-y = np.random.rand()*100
-z = np.random.rand()*100
-
-myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
-lookVector = myrend.f3dObjGetCentroid() - myrend.mRendCamera.location
-myrend.fRenderCamSetLookVector(lookVector)
 
 
