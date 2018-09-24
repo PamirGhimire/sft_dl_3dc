@@ -88,6 +88,8 @@ bpy.context.scene.update()
 
 # position the lamp X units from object's origin along it's x direction
 bpy.data.objects['Lamp'].location = mycam.matrix_world * Vector((0.0, 0.0, 0.0))
+# set lamp's energy
+bpy.data.lamps['Lamp'].energy = 1.0
 bpy.context.scene.update()
 
 #
@@ -156,7 +158,7 @@ myBCurveObj.rotation_euler = Vector((0, np.pi/2, -np.pi/2))
 my3dobj.modifiers.new(name='myBCurveModifier', type='CURVE')
 my3dobj.modifiers['myBCurveModifier'].object = myBCurveObj
 
-# move the 3d object a little bit along the 
+# move the 3d object a little bit along the curve's major axis
 my3dobj.location = my3dobj.location + Vector((0, 0, -5))
 bpy.context.scene.update()
 
@@ -170,7 +172,9 @@ bpy.context.scene.update()
 # 7 save renders
 #-------------
 renderFilePath = '/home/ghimire/Desktop/sft_dl_3dc/data/training_defRenders/testRender.jpg'
-bpy.data.scenes["Scene"].render.filepath = renderFilePath
+bpy.data.scenes['Scene'].render.filepath = renderFilePath
+bpy.data.scenes['Scene'].render.resolution_x = 1920
+bpy.data.scenes['Scene'].render.resolution_x = 1080
 bpy.ops.render.render( write_still=True )
 
 
