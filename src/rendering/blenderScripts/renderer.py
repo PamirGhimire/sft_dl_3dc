@@ -196,7 +196,7 @@ myrend.mRenderHeight = 1080
 # camera intrinsics : 35 mm focal length, 32 mm sensor size, image resolution
 
 # import 3d object
-objFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/horses.obj'
+objFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/horses_frontBack.obj'
 myrend.f3dObjImport(objFilePath)
 
 # place it at a pre-determined pose
@@ -213,7 +213,7 @@ coordinates = [
 myrend.fBezierCurveSet(coordinates)
 
 # generate renders
-nDesiredRenders = 10
+nDesiredRenders = 100
 # distance between the 3d object and the camera
 rObjCam = 50 #centimeters
 # for n. of desired renders
