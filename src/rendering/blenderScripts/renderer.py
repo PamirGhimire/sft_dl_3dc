@@ -14,8 +14,6 @@ class Renderer:
     # constructor
     def __init__(self):
         print('Renderer object ')
-        # camera (contains background image)
-        self.mRendCamera = bpy.data.objects['Camera']
         # lamp
         self.mLamp = bpy.data.objects['Lamp']
         # Bezier curve modifier
@@ -32,8 +30,17 @@ class Renderer:
         self.mBCurveObj = []
         self.mBCurveModifierName = 'bCurveModifier'
         #mCamera = Camera()
-        self.mRenderWidth = 576
-        self.mRenderHeight = 320
+        # camera (contains background image)
+        self.mRenderCam = bpy.data.objects['Camera']
+        self.mRenderWidth = 960
+        self.mRenderHeight = 540
+        self.mRenderCamFocalLengthmm = 7.6800494
+        self.mSensorWidthmm = 7.0
+        self.mSensorHeightmm = 18.0
+        self.fRenderCamSetRenderWidthHeight(self.mRenderWidth, self.mRenderHeight)
+        self.fRenderCamSetFocalLengthmm(self.mRenderCamFocalLengthmm)
+        self.fRenderCamSetSensorWidthHeightmm(self.mSensorWidthmm, self.mSensorHeightmm)
+        self.mRenderCamCalibration = self.fRenderCamGetCalibrationMatrix()
 
     # import 3d mesh 
     def f3dObjImport(self, path2Obj):
@@ -158,27 +165,84 @@ class Renderer:
         bpy.context.scene.update()    
         
     # create a render using the render cam
-    def fRendCamRender(self, pathToRender):
+    def fRenderCamRender(self, pathToRender):
         bpy.data.scenes['Scene'].render.filepath = pathToRender
-        bpy.data.scenes['Scene'].render.resolution_x = self.mRenderWidth
-        bpy.data.scenes['Scene'].render.resolution_y = self.mRenderHeight
         bpy.ops.render.render( write_still=True )
+      
+    # set width and height of render (this affects the rend. cam intrinsics)
+    def fRenderCamSetRenderWidthHeight(self, w, h):
+        self.mRenderWidth = w
+        self.mRendHeight = h
+        bpy.data.scenes['Scene'].render.resolution_x = w
+        bpy.data.scenes['Scene'].render.resolution_y = h
+        bpy.data.scenes['Scene'].render.resolution_percentage = 100.0
+        self.mRenderCamCalibration = self.fRenderCamGetCalibrationMatrix()
+        
+    # set focal length of the render camera (this affects the cam intrinsics)
+    def fRenderCamSetFocalLengthmm(self,f=7.6800494):
+        self.mRenderCamFocalLengthmm = f
+        bpy.data.cameras['Camera'].lens = f
+        self.mRenderCamCalibration = self.fRenderCamGetCalibrationMatrix()
+        
+    # set width and height of the render camera's sensor
+    def fRenderCamSetSensorWidthHeightmm(self, w=7.0, h=18.0):
+        bpy.data.cameras['Camera'].sensor_width = w
+        bpy.data.cameras['Camera'].sensor_height = h
+        self.mSensorWidthmm = w
+        self.mSensorHeightmm = h
+        self.mRenderCamCalibration = self.fRenderCamGetCalibrationMatrix()
+
+    # get intrinsic matrix of the rendering camera
+    def fRenderCamGetCalibrationMatrix(self):
+        camd = bpy.data.cameras['Camera']
+        f_in_mm = camd.lens
+        scene = bpy.context.scene
+        resolution_x_in_px = scene.render.resolution_x
+        resolution_y_in_px = scene.render.resolution_y
+        scale = scene.render.resolution_percentage / 100
+        sensor_width_in_mm = camd.sensor_width
+        sensor_height_in_mm = camd.sensor_height
+        pixel_aspect_ratio = scene.render.pixel_aspect_x / scene.render.pixel_aspect_y
+        if (camd.sensor_fit == 'VERTICAL'):
+            # the sensor height is fixed (sensor fit is horizontal), 
+            # the sensor width is effectively changed with the pixel aspect ratio
+            s_u = resolution_x_in_px * scale / sensor_width_in_mm / pixel_aspect_ratio 
+            s_v = resolution_y_in_px * scale / sensor_height_in_mm
+        else: # 'HORIZONTAL' and 'AUTO'
+            # the sensor width is fixed (sensor fit is horizontal), 
+            # the sensor height is effectively changed with the pixel aspect ratio
+            pixel_aspect_ratio = scene.render.pixel_aspect_x / scene.render.pixel_aspect_y
+            s_u = resolution_x_in_px * scale / sensor_width_in_mm
+            s_v = resolution_y_in_px * scale * pixel_aspect_ratio / sensor_height_in_mm
+
+        # Parameters of intrinsic calibration matrix K
+        alpha_u = f_in_mm * s_u
+        alpha_v = f_in_mm * s_v
+        u_0 = resolution_x_in_px * scale / 2
+        v_0 = resolution_y_in_px * scale / 2
+        skew = 0 # only use rectangular pixels
+        K = mathutils.Matrix(
+            ((alpha_u, skew,    u_0),
+            (    0  , alpha_v, v_0),
+            (    0  , 0,        1 )))
+
+        return K          
         
     # change render camera's location in 3d object frame
     def fRenderCamSetLocation3dObj(self, locationInCam):
         locationInWorld = self.m3dObj.matrix_world * locationInCam
-        self.mRendCamera.location = locationInWorld
+        self.mRenderCam.location = locationInWorld
         bpy.context.scene.update()
         
     # change render camera's look direction in 3d object frame
     def fRenderCamSetLookAtPoint(self, pointInWorld):
         # camera's location in the world
-        loc_camera = self.mRendCamera.matrix_world.to_translation()
+        loc_camera = self.mRenderCam.matrix_world.to_translation()
         direction = pointInWorld - loc_camera
         # point the cameras '-Z' and use its 'Y' as up
         rot_quat = direction.to_track_quat('-Z', 'Y')
         # assume we're using euler rotation
-        self.mRendCamera.rotation_euler = rot_quat.to_euler()
+        self.mRenderCam.rotation_euler = rot_quat.to_euler()
         bpy.context.scene.update()
         
     # save mesh vertices in camera frame
@@ -189,8 +253,8 @@ class Renderer:
 
         allVerts = []        
         for vertex in verts:
-            matWorldToCam = mathutils.Matrix(self.mRendCamera.matrix_world)
-            mathutils.Matrix.invert(matWorldToCam)
+            matWorldToCam = mathutils.Matrix(self.mRenderCam.matrix_world)
+            matWorldToCam.invert()
             
             vert = matWorldToCam * self.m3dObj.matrix_world * vertex
             vert = [vert.x, vert.y, vert.z]
@@ -207,28 +271,28 @@ class Renderer:
             return np.array(nonDuplicateVerts)
         
 
-        
 #----------------------------------------------------------------------------
 # imports
 import bpy
 import mathutils
 import numpy as np
 
+projectDir = '/home/bokoo/Desktop/sft_dl_3dc'
 # create a renderer object
 myrend = Renderer()
-myrend.mRenderWidth = 1920
-myrend.mRenderHeight = 1080
 
 # setup lights in the environment : currently in blender startup file
-# camera intrinsics : 35 mm focal length, 32 mm sensor size, image resolution
+# camera intrinsics : 7.68 mm focal length, 7mm(w) x 18mm(h) sensor, 960x540 
+myrend.fRenderCamSetRenderWidthHeight(w=960, h=540)
+myrend.fRenderCamSetSensorWidthHeightmm(w=7.0,h=18.0)
+myrend.fRenderCamSetFocalLengthmm(f=7.68)
 
 # import 3d object
-objFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/horses_frontBack.obj'
+objFilePath = projectDir + '/data/3dObjs/horses_frontBack.obj'
 myrend.f3dObjImport(objFilePath)
 
-# place it at a pre-determined pose
+# place it at a pre-determined position
 myrend.f3dObjSetLocation_world((0, 0, 0))
-#myrend.fSet3dObjRotation_world((0, 0, 0))
 
 # add a bezier curve modifier to the scene with pre-chosen configurations
 x= 5
@@ -262,12 +326,13 @@ for nRender in range(nDesiredRenders):
     myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
 
     # save the render
-    pathToRender = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
-    myrend.fRendCamRender(pathToRender)    
+    pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nRender) +'.jpg'
+    myrend.fRenderCamRender(pathToRender)    
 
     # save the cloud
-    pathToSaveCld = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender)
+    pathToSaveCld = projectDir + '/data/training_defRenders/testRender' + str(nRender)
     allVerts = myrend.fRenderCamSaveMeshInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
 
-
+k = myrend.fRenderCamGetCalibrationMatrix()
+np.save(projectDir + '/data/training_defRenders/calibration', k)
 
