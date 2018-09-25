@@ -239,34 +239,35 @@ coordinates = [
 # add a curve modifier to the object
 myrend.fBezierCurveSet(coordinates)
 
-## generate renders
-#nDesiredRenders = 10
-## distance between the 3d object and the camera
-#rObjCam = 50 #centimeters
-## for n. of desired renders
-#for nRender in range(nDesiredRenders): 
-#    print('Render counter : ', nRender)
-#    
-#    # change rotation of the curve modifier
-#    #myrend.fBezierCurveSetRotationX((np.random.rand() * 2*np.pi - np.pi/2) * np.pi/180.0)
-#    myrend.fBezierCurveRotateDeltaX(10.0)
-#    
-#    # move the camera to a random pose wrt the object
-#    alpha = (np.random.rand()*180 - 90) * np.pi/180.0
-#    theta = (np.random.rand()*180 - 90) * np.pi/180.0
-#    x = rObjCam*np.cos(theta)*cos(alpha)
-#    y = rObjCam*np.cos(theta)*np.sin(alpha)
-#    z = rObjCam*sin(theta) 
-#
-#    myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
-#    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
-#
-#    # save the render
-#    pathToRender = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
-#    myrend.fRendCamRender(pathToRender)    
+# generate renders
+nDesiredRenders = 10
+# distance between the 3d object and the camera
+rObjCam = 50 #centimeters
+# for n. of desired renders
+for nRender in range(nDesiredRenders): 
+    print('Render counter : ', nRender)
+    
+    # change rotation of the curve modifier
+    #myrend.fBezierCurveSetRotationX((np.random.rand() * 2*np.pi - np.pi/2) * np.pi/180.0)
+    myrend.fBezierCurveRotateDeltaX(10.0)
+    
+    # move the camera to a random pose wrt the object
+    alpha = (np.random.rand()*180 - 90) * np.pi/180.0
+    theta = (np.random.rand()*180 - 90) * np.pi/180.0
+    x = rObjCam*np.cos(theta)*cos(alpha)
+    y = rObjCam*np.cos(theta)*np.sin(alpha)
+    z = rObjCam*sin(theta) 
 
-pathToSaveCld = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(0)
-allVerts = myrend.fRenderCamSaveMeshInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
+    myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
+    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
+
+    # save the render
+    pathToRender = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
+    myrend.fRendCamRender(pathToRender)    
+
+    # save the cloud
+    pathToSaveCld = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender)
+    allVerts = myrend.fRenderCamSaveMeshInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
 
 
 
