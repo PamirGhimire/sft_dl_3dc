@@ -64,12 +64,12 @@ class Renderer:
         my3dobj_com = Vector((0.0, 0.0, 0.0))
         nVertices = len(self.m3dObj.data.vertices)
         for vertex in self.m3dObj.data.vertices:
-            my3dobj_com = my3dobj_com + vertex.co
+            my3dobj_com = my3dobj_com + self.m3dObj.matrix_world*vertex.co
         my3dobj_com /= nVertices
         print('Center of mass of the loaded 3d oject = ', my3dobj_com)
         return my3dobj_com
         
-    # get min. x, y and z of the 3d obj member
+    # get min. x, y and z of the 3d obj member (in model coordinates)
     def f3dObjGetMins(self):
         minx = float('inf')
         miny = float('inf')
@@ -85,7 +85,7 @@ class Renderer:
         mins = Vector((minx, miny, minz))
         return mins
     
-    # get max. x, y and z of the 3d obj member
+    # get max. x, y and z of the 3d obj member (in model coordinates)
     def f3dObjGetMaxs(self):
         maxx = -float('inf')
         maxy = -float('inf')
@@ -181,6 +181,26 @@ class Renderer:
         self.mRendCamera.rotation_euler = rot_quat.to_euler()
         bpy.context.scene.update()
         
+    # save mesh vertices in camera frame
+    def fRenderCamSaveMeshInCamFrame(self, savename, meshIsTwoFaced=True):
+        allVerts = []
+        for vertex in self.m3dObj.data.vertices:
+            vert = self.m3dObj.matrix_world * vertex.co
+            vert = [vert.x, vert.y, vert.z]
+            allVerts.append(vert)
+        
+        if not meshIsTwoFaced:
+            np.save(savename, allVerts)
+            return np.array(allVerts)
+        else:
+            nonDuplicateVerts = []
+            for j in range( int(len(allVerts)/2)):
+                nonDuplicateVerts.append(allVerts[j])
+            np.save(savename, nonDuplicateVerts)
+            return np.array(nonDuplicateVerts)
+        
+
+        
 #----------------------------------------------------------------------------
 # imports
 import bpy
@@ -196,7 +216,7 @@ myrend.mRenderHeight = 1080
 # camera intrinsics : 35 mm focal length, 32 mm sensor size, image resolution
 
 # import 3d object
-objFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/horses_frontBack.obj'
+objFilePath = '/home/ghimire/Desktop/sft_dl_3dc/data/3dObjs/horses_frontBack.obj'
 myrend.f3dObjImport(objFilePath)
 
 # place it at a pre-determined pose
@@ -213,31 +233,33 @@ coordinates = [
 myrend.fBezierCurveSet(coordinates)
 
 # generate renders
-nDesiredRenders = 100
-# distance between the 3d object and the camera
-rObjCam = 50 #centimeters
-# for n. of desired renders
-for nRender in range(nDesiredRenders): 
-    print('Render counter : ', nRender)
-    
-    # change rotation of the curve modifier
-    #myrend.fBezierCurveSetRotationX((np.random.rand() * 2*np.pi - np.pi/2) * np.pi/180.0)
-    myrend.fBezierCurveRotateDeltaX(10.0)
-    
-    # move the camera to a random pose wrt the object
-    alpha = (np.random.rand()*180 - 90) * np.pi/180.0
-    theta = (np.random.rand()*180 - 90) * np.pi/180.0
-    x = rObjCam*np.cos(theta)*cos(alpha)
-    y = rObjCam*np.cos(theta)*np.sin(alpha)
-    z = rObjCam*sin(theta) 
+#nDesiredRenders = 10
+## distance between the 3d object and the camera
+#rObjCam = 50 #centimeters
+## for n. of desired renders
+#for nRender in range(nDesiredRenders): 
+#    print('Render counter : ', nRender)
+#    
+#    # change rotation of the curve modifier
+#    #myrend.fBezierCurveSetRotationX((np.random.rand() * 2*np.pi - np.pi/2) * np.pi/180.0)
+#    myrend.fBezierCurveRotateDeltaX(10.0)
+#    
+#    # move the camera to a random pose wrt the object
+#    alpha = (np.random.rand()*180 - 90) * np.pi/180.0
+#    theta = (np.random.rand()*180 - 90) * np.pi/180.0
+#    x = rObjCam*np.cos(theta)*cos(alpha)
+#    y = rObjCam*np.cos(theta)*np.sin(alpha)
+#    z = rObjCam*sin(theta) 
+#
+#    myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
+#    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
+#
+#    # save the render
+#    pathToRender = '/home/ghimire/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
+#    myrend.fRendCamRender(pathToRender)    
 
-    myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
-    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
-
-    # save the render
-    pathToRender = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
-    myrend.fRendCamRender(pathToRender)    
-    #myrend.fSaveMeshInCamFrame()
+pathToSaveCld = '/home/ghimire/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(0)
+allVerts = myrend.fRenderCamSaveMeshInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
 
 
 
