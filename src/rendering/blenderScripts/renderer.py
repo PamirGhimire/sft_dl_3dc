@@ -8,7 +8,7 @@ Renderer class
 """
 import bpy
 import numpy as np
-
+import mathutils
 
 class Renderer:
     # constructor
@@ -183,9 +183,16 @@ class Renderer:
         
     # save mesh vertices in camera frame
     def fRenderCamSaveMeshInCamFrame(self, savename, meshIsTwoFaced=True):
-        allVerts = []
-        for vertex in self.m3dObj.data.vertices:
-            vert = self.m3dObj.matrix_world * vertex.co
+        scene = bpy.context.scene
+        obj_data = self.m3dObj.to_mesh(scene, apply_modifiers=True, settings='PREVIEW')
+        verts = [v.co for v in obj_data.vertices]
+
+        allVerts = []        
+        for vertex in verts:
+            matWorldToCam = mathutils.Matrix(self.mRendCamera.matrix_world)
+            mathutils.Matrix.invert(matWorldToCam)
+            
+            vert = matWorldToCam * self.m3dObj.matrix_world * vertex
             vert = [vert.x, vert.y, vert.z]
             allVerts.append(vert)
         
@@ -216,7 +223,7 @@ myrend.mRenderHeight = 1080
 # camera intrinsics : 35 mm focal length, 32 mm sensor size, image resolution
 
 # import 3d object
-objFilePath = '/home/ghimire/Desktop/sft_dl_3dc/data/3dObjs/horses_frontBack.obj'
+objFilePath = '/home/bokoo/Desktop/sft_dl_3dc/data/3dObjs/horses_frontBack.obj'
 myrend.f3dObjImport(objFilePath)
 
 # place it at a pre-determined pose
@@ -232,7 +239,7 @@ coordinates = [
 # add a curve modifier to the object
 myrend.fBezierCurveSet(coordinates)
 
-# generate renders
+## generate renders
 #nDesiredRenders = 10
 ## distance between the 3d object and the camera
 #rObjCam = 50 #centimeters
@@ -255,10 +262,10 @@ myrend.fBezierCurveSet(coordinates)
 #    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
 #
 #    # save the render
-#    pathToRender = '/home/ghimire/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
+#    pathToRender = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(nRender) +'.jpg'
 #    myrend.fRendCamRender(pathToRender)    
 
-pathToSaveCld = '/home/ghimire/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(0)
+pathToSaveCld = '/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders/testRender' + str(0)
 allVerts = myrend.fRenderCamSaveMeshInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
 
 
