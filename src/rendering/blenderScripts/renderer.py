@@ -217,7 +217,7 @@ class Renderer:
 
         # Parameters of intrinsic calibration matrix K
         alpha_u = f_in_mm * s_u
-        alpha_v = f_in_mm * s_v
+        alpha_v = f_in_mm * s_u # same n. of pixels/mm along x and y
         u_0 = resolution_x_in_px * scale / 2
         v_0 = resolution_y_in_px * scale / 2
         skew = 0 # only use rectangular pixels
@@ -246,7 +246,7 @@ class Renderer:
         bpy.context.scene.update()
         
     # save mesh vertices in camera frame
-    def fRenderCamSaveMeshInCamFrame(self, savename, meshIsTwoFaced=True):
+    def fRenderCamSaveMeshVertsInCamFrame(self, savename, meshIsTwoFaced=True):
         scene = bpy.context.scene
         obj_data = self.m3dObj.to_mesh(scene, apply_modifiers=True, settings='PREVIEW')
         verts = [v.co for v in obj_data.vertices]
@@ -270,6 +270,39 @@ class Renderer:
             np.save(savename, nonDuplicateVerts)
             return np.array(nonDuplicateVerts)
         
+
+    # save mesh vertices in camera frame
+    def fRenderCamGetMeshInCamFrame(self, meshIsTwoFaced=True):
+        scene = bpy.context.scene
+        obj_data = self.m3dObj.to_mesh(scene, apply_modifiers=True, settings='PREVIEW')
+        verts = [v.co for v in obj_data.vertices]
+        normals = [v.normal for v in obj_data.vertices]
+
+        allVerts = []        
+        allNormals = []
+        for n in range(len(verts)):
+            vertex = verts[n]
+            normal = normals[n]
+            matWorldToCam = mathutils.Matrix(self.mRenderCam.matrix_world)
+            matWorldToCam.invert()
+            
+            vert = matWorldToCam * self.m3dObj.matrix_world * vertex
+            normal = matWorldToCam * self.m3dObj.matrix_world * normal
+            vert = [vert.x, vert.y, vert.z]
+            normal = [normal.x, normal.y, normal.z]
+            
+            allVerts.append(vert)
+            allNormals.append(normal)
+        
+        if not meshIsTwoFaced:
+            return np.array(allVerts), np.array(allNormals)
+        else:
+            nonDuplicateVerts = []
+            nonDuplicateNormals = []
+            for j in range( int(len(allVerts)/2)):
+                nonDuplicateVerts.append(allVerts[j])
+                nonDuplicateNormals.append(allNormals[j])
+            return np.array(nonDuplicateVerts), np.array(nonDuplicateNormals)
 
 #----------------------------------------------------------------------------
 # imports
@@ -331,8 +364,13 @@ for nRender in range(nDesiredRenders):
 
     # save the cloud
     pathToSaveCld = projectDir + '/data/training_defRenders/testRender' + str(nRender)
-    allVerts = myrend.fRenderCamSaveMeshInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
-
+    #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
+    allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
+    mesh = dict()
+    mesh['vertices'] = allVerts
+    mesh['normals'] = allNormals
+    np.save(pathToSaveCld, mesh)
+    
 k = myrend.fRenderCamGetCalibrationMatrix()
 np.save(projectDir + '/data/training_defRenders/calibration', k)
 

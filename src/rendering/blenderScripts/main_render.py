@@ -1,3 +1,7 @@
+projectDir = '/home/bokoo/Desktop/sft_dl_3dc'
+import sys
+sys.path.insert(0, projectDir+'/src/utils/')
+
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
 import matplotlib.pyplot as plt
 
@@ -5,7 +9,7 @@ import numpy as np
 import cv2
 import os
 
-os.chdir('/home/bokoo/Desktop/sft_dl_3dc/data/training_defRenders')
+os.chdir(projectDir + '/data/training_defRenders')
 plt.close("all")
 
 #for i in range(10):
@@ -21,12 +25,12 @@ plt.close("all")
 #    plt.show()
 
 # sanity check : project 3d points onto the image 
-n = 8
+n = 0
 im = cv2.imread('testRender' + str(n) + '.png')
-imc = im
-cloud = np.load('testRender' + str(n) + '.npy')
+imc = im.copy()
+vertsNormals = np.load('testRender' + str(n) + '.npy').item()
+cloud = vertsNormals['vertices']
 k = np.load('calibration.npy')
-k[1, 1] = k[0, 0]
 
 imwidth = im.shape[1]
 imheight = im.shape[0]
@@ -42,8 +46,41 @@ for nPoint in range(cloud.shape[0]):
         if (pIm[1] >= 0 and pIm[1] < imheight):
             row = int(pIm[1])
             col = int(pIm[0])
+            
             imc[row, imwidth-col] = [255, 0, 0]
 
-plt.figure()
-plt.imshow(imc)
+#plt.figure()
+#plt.imshow(imc)
+
+#---------------------------------
+import ObjLoader
+# check texture info
+pathToObjFile = projectDir + '/data/3dObjs/horses.obj'
+pathToTexture = projectDir + '/data/textures/horses.jpg'
+
+verts, texs, normals = ObjLoader.loadObj(pathToObjFile)
+textureMap = cv2.imread(pathToTexture)
+
+canvas = np.zeros(imc.shape)
+canvas_im = np.zeros(imc.shape)
+for nPoint in range(cloud.shape[0]):
+    pCam = cloud[nPoint,:] 
     
+    pIm = k.dot(pCam)
+    pIm = pIm / pIm[2]
+    
+    if (pIm[0] >= 0 and pIm[0] < imwidth): # valid x coordinate
+        if (pIm[1] >= 0 and pIm[1] < imheight): # valid y coordinate
+            row = int(pIm[1])
+            col = int(pIm[0])
+            
+            uv = texs[nPoint]
+            uv0 = int(uv[0] * textureMap.shape[1])-1 # width, x
+            uv1 = int(uv[1] * textureMap.shape[0])-1 # height, y
+            canvas[row, imwidth-col] = textureMap[uv1, uv0] # (row, col)
+            canvas_im[row, imwidth-col] = im[row, imwidth-col]
+            
+plt.figure()
+plt.imshow(canvas)
+plt.figure()
+plt.imshow(canvas_im)
