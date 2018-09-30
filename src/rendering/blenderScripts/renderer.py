@@ -146,6 +146,12 @@ class Renderer:
     def fBezierCurveRotateDeltaX(self, degrees):
         self.m3dObj.modifiers[self.mBCurveModifierName].object.rotation_euler.y +=  degrees * np.pi/180.0
         bpy.context.scene.update()
+        
+    # add random changes to the curvature of the bezier curve
+    def fBezierCurveRandDistort():
+        #self.mBCurveObj.data.splines[0].bezier_points[0].handle_right += Vector(())
+        #self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += Vector(())
+        
          
     # set rotation of the bcurve modifier about the world x axis    
     def fBezierCurveSetRotationX(self, degrees):
@@ -304,7 +310,7 @@ class Renderer:
                 nonDuplicateNormals.append(allNormals[j])
             return np.array(nonDuplicateVerts), np.array(nonDuplicateNormals)
 
-#----------------------------------------------------------------------------
+#-------------------------------------
 # imports
 import bpy
 import mathutils
@@ -345,9 +351,11 @@ for nRender in range(nDesiredRenders):
     print('Render counter : ', nRender)
     
     # change rotation of the curve modifier
-    #myrend.fBezierCurveSetRotationX((np.random.rand() * 2*np.pi - np.pi/2) * np.pi/180.0)
-    myrend.fBezierCurveRotateDeltaX(10.0)
+    myrend.fBezierCurveRotateDeltaX(6.0)
     
+    # change curvature controlling params of the curve
+    #myrend.fBezierCurveRandDistort()
+        
     # move the camera to a random pose wrt the object
     alpha = (np.random.rand()*180 - 90) * np.pi/180.0
     theta = (np.random.rand()*180 - 90) * np.pi/180.0
@@ -362,7 +370,7 @@ for nRender in range(nDesiredRenders):
     pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nRender) +'.jpg'
     myrend.fRenderCamRender(pathToRender)    
 
-    # save the cloud
+    # save the cloud, and other data
     pathToSaveCld = projectDir + '/data/training_defRenders/testRender' + str(nRender)
     #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
     allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
