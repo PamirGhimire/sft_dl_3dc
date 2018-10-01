@@ -95,7 +95,7 @@ for nPoint in range(cloud.shape[0]):
         if (pIm[1] >= 0 and pIm[1] < imheight): # valid y coordinate
             uv = texs[nPoint]
             uv0 = int(uv[0] * textureMap.shape[1])-1 # width, x
-            uv1 = int(uv[1] * textureMap.shape[0])-1 # height, y
+            uv1 = texMapHeight - int(uv[1] * textureMap.shape[0])-1 # height, y
             visibleVertexTrueColor = textureMap[uv1, uv0] # (row, col)
             
             row = int(pIm[1]) # y
