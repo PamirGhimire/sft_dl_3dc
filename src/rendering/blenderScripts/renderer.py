@@ -29,6 +29,10 @@ class Renderer:
         self.mCurveName = 'bCurve'
         self.mBCurveObj = []
         self.mBCurveModifierName = 'bCurveModifier'
+        self.mBCurveP0HandleLeft = [] # all handle points are Vector(())'s
+        self.mBCurveP0HandleRight = [] 
+        self.mBCurveP1HandleLeft  = []
+        self.mBCurveP1HandleRight = []  
         #mCamera = Camera()
         # camera (contains background image)
         self.mRenderCam = bpy.data.objects['Camera']
@@ -140,6 +144,11 @@ class Renderer:
         self.m3dObj.modifiers[self.mBCurveModifierName].object = self.mBCurveObj
         # move the 3d object a little bit along the curve's major axis
         self.m3dObj.location = self.m3dObj.location + Vector((0, 0, -5))
+        # store original configuration of the curve (for modification later)
+        self.mBCurveP0HandleLeft = self.mBCurveObj.data.splines[0].bezier_points[0].handle_left
+        self.mBCurveP0HandleRight = self.mBCurveObj.data.splines[0].bezier_points[0].handle_right
+        self.mBCurveP1HandleLeft = self.mBCurveObj.data.splines[0].bezier_points[1].handle_left
+        self.mBCurveP1HandleRight = self.mBCurveObj.data.splines[0].bezier_points[1].handle_right    
         bpy.context.scene.update()
 
     # add to rotation of the bcurve modifier about the world x axis    
@@ -148,11 +157,10 @@ class Renderer:
         bpy.context.scene.update()
         
     # add random changes to the curvature of the bezier curve
-    def fBezierCurveRandDistort():
-        #self.mBCurveObj.data.splines[0].bezier_points[0].handle_right += Vector(())
-        #self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += Vector(())
-        
-         
+    def fBezierCurveRandDistort(self):
+        self.mBCurveObj.data.splines[0].bezier_points[0].handle_right +=  3.0*Vector((0.0, np.random.rand()-0.5, 0.0)) 
+        self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += 3.0*Vector((0.0, np.random.rand()-0.5, 0.0))
+       
     # set rotation of the bcurve modifier about the world x axis    
     def fBezierCurveSetRotationX(self, degrees):
         self.m3dObj.modifiers[self.mBCurveModifierName].object.rotation_euler.y =  degrees * np.pi/180.0
@@ -345,16 +353,16 @@ myrend.fBezierCurveSet(coordinates)
 # generate renders
 nDesiredRenders = 10
 # distance between the 3d object and the camera
-rObjCam = 50 #centimeters
+rObjCam = 1000 #centimeters
 # for n. of desired renders
 for nRender in range(nDesiredRenders): 
     print('Render counter : ', nRender)
     
     # change rotation of the curve modifier
-    myrend.fBezierCurveRotateDeltaX(6.0)
+    myrend.fBezierCurveRotateDeltaX(4.0)
     
     # change curvature controlling params of the curve
-    #myrend.fBezierCurveRandDistort()
+    myrend.fBezierCurveRandDistort()
         
     # move the camera to a random pose wrt the object
     alpha = (np.random.rand()*180 - 90) * np.pi/180.0
