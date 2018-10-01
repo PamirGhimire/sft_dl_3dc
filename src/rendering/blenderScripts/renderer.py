@@ -158,8 +158,8 @@ class Renderer:
         
     # add random changes to the curvature of the bezier curve
     def fBezierCurveRandDistort(self):
-        self.mBCurveObj.data.splines[0].bezier_points[0].handle_right +=  3.0*Vector((0.0, np.random.rand()-0.5, 0.0)) 
-        self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += 3.0*Vector((0.0, np.random.rand()-0.5, 0.0))
+        self.mBCurveObj.data.splines[0].bezier_points[0].handle_right +=  2.25*Vector((0.0, np.random.rand()-0.5, 0.0)) 
+        self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += 2.25*Vector((0.0, np.random.rand()-0.5, 0.0))
        
     # set rotation of the bcurve modifier about the world x axis    
     def fBezierCurveSetRotationX(self, degrees):
@@ -204,6 +204,11 @@ class Renderer:
         bpy.data.cameras['Camera'].sensor_height = h
         self.mSensorWidthmm = w
         self.mSensorHeightmm = h
+        self.mRenderCamCalibration = self.fRenderCamGetCalibrationMatrix()
+        
+    # set focal length of the camera
+    def fRenderCamSetFocalLengthmm(self, f=7.680):
+        bpy.data.cameras['Camera'].lens = f
         self.mRenderCamCalibration = self.fRenderCamGetCalibrationMatrix()
 
     # get intrinsic matrix of the rendering camera
@@ -353,7 +358,7 @@ myrend.fBezierCurveSet(coordinates)
 # generate renders
 nDesiredRenders = 10
 # distance between the 3d object and the camera
-rObjCam = 1000 #centimeters
+rObjCam = 50 #centimeters
 # for n. of desired renders
 for nRender in range(nDesiredRenders): 
     print('Render counter : ', nRender)
@@ -363,30 +368,42 @@ for nRender in range(nDesiredRenders):
     
     # change curvature controlling params of the curve
     myrend.fBezierCurveRandDistort()
-        
+   
+    # change the distance of the camera from the object
+    randRObjCam = rObjCam + 10*(np.random.rand() - 0.5)
+    
     # move the camera to a random pose wrt the object
     alpha = (np.random.rand()*180 - 90) * np.pi/180.0
     theta = (np.random.rand()*180 - 90) * np.pi/180.0
-    x = rObjCam*np.cos(theta)*cos(alpha)
-    y = rObjCam*np.cos(theta)*np.sin(alpha)
-    z = rObjCam*sin(theta) 
+    x = randRObjCam*np.cos(theta)*cos(alpha)
+    y = randRObjCam*np.cos(theta)*np.sin(alpha)
+    z = randRObjCam*sin(theta) 
 
     myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
     myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
 
+    # change the focal length of the camera
+    randFocal = 6.0 + 2 * np.random.rand()
+    myrend.fRenderCamSetFocalLengthmm(randFocal)    
+    currCalibrationMatrix = myrend.fRenderCamGetCalibrationMatrix()
+    
     # save the render
     pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nRender) +'.jpg'
     myrend.fRenderCamRender(pathToRender)    
 
     # save the cloud, and other data
-    pathToSaveCld = projectDir + '/data/training_defRenders/testRender' + str(nRender)
+    pathToSaveRendData = projectDir + '/data/training_defRenders/testRender' + str(nRender)
     #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
     allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
+    rendData = dict()
+    
     mesh = dict()
     mesh['vertices'] = allVerts
     mesh['normals'] = allNormals
-    np.save(pathToSaveCld, mesh)
+    rendData['mesh'] = mesh
     
-k = myrend.fRenderCamGetCalibrationMatrix()
-np.save(projectDir + '/data/training_defRenders/calibration', k)
-
+    rendData['focalLength'] = randFocal
+    rendData['cameraMatrix'] = np.array(currCalibrationMatrix)
+    np.save(pathToSaveRendData, rendData)
+    
+#---------END--OF--RENDERING--PIPELINE---

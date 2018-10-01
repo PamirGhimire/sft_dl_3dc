@@ -14,29 +14,25 @@ plt.close("all")
 
 
 
-# sanity check : project 3d points onto the image 
+# sanity check : project 3d points (vertices of deformed meshes) onto the image 
 n = 0
 im = cv2.imread('testRender' + str(n) + '.png')
 imc = im.copy()
-vertsNormals = np.load('testRender' + str(n) + '.npy').item()
-cloud = vertsNormals['vertices']
-k = np.load('calibration.npy')
+rendData = np.load('testRender' + str(n) + '.npy').item()
+cloud = rendData['mesh']['vertices'] #vertsNormals['vertices']
+k = rendData['cameraMatrix'] #np.load('calibration.npy')
 
 imwidth = im.shape[1]
 imheight = im.shape[0]
 
-
-for i in range(10):
-    np.load('testRender' + str(i) + '.npy').item()
-    cldToLoad = 'testRender' + str(i) + '.npy'
-    cloud = vertsNormals['vertices']    
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(testcld[:,0], testcld[:,1], testcld[:,2])
-    ax.set_xlabel('X Label')
-    ax.set_ylabel('Y Label')
-    ax.set_zlabel('Z Label')
-    plt.show()
+# 3d scatter plot of the point cloud
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(cloud[:,0], cloud[:,1], cloud[:,2])
+ax.set_xlabel('X Label')
+ax.set_ylabel('Y Label')
+ax.set_zlabel('Z Label')
+plt.show()
 
 projections = []
 for nPoint in range(cloud.shape[0]):
@@ -55,6 +51,8 @@ for nPoint in range(cloud.shape[0]):
 plt.figure()
 plt.imshow(imc)
 
+##---------------------------------
+# TEXTURE LOOKUP TESTING:
 ##---------------------------------
 #import ObjLoader
 ## check texture info
