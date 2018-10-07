@@ -15,7 +15,7 @@ plt.close("all")
 
 
 # sanity check : project 3d points (vertices of deformed meshes) onto the image 
-n = 5
+n = 15
 im = cv2.imread('testRender' + str(n) + '.png')
 imc = im.copy()
 rendData = np.load('testRender' + str(n) + '.npy').item()

@@ -158,8 +158,8 @@ class Renderer:
         
     # add random changes to the curvature of the bezier curve
     def fBezierCurveRandDistort(self):
-        self.mBCurveObj.data.splines[0].bezier_points[0].handle_right +=  2.25*Vector((0.0, np.random.rand()-0.5, 0.0)) 
-        self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += 2.25*Vector((0.0, np.random.rand()-0.5, 0.0))
+        self.mBCurveObj.data.splines[0].bezier_points[0].handle_right +=  1.9*Vector((0.0, np.random.rand()-0.5, 0.0)) 
+        self.mBCurveObj.data.splines[0].bezier_points[1].handle_left += 1.9*Vector((0.0, np.random.rand()-0.5, 0.0))
        
     # set rotation of the bcurve modifier about the world x axis    
     def fBezierCurveSetRotationX(self, degrees):
@@ -335,7 +335,7 @@ myrend = Renderer()
 
 # setup lights in the environment : currently in blender startup file
 # camera intrinsics : 7.68 mm focal length, 7mm(w) x 18mm(h) sensor, 960x540 
-myrend.fRenderCamSetRenderWidthHeight(w=960, h=540)
+myrend.fRenderCamSetRenderWidthHeight(w=640, h=480)
 myrend.fRenderCamSetSensorWidthHeightmm(w=7.0,h=18.0)
 myrend.fRenderCamSetFocalLengthmm(f=7.68)
 
@@ -356,13 +356,13 @@ coordinates = [
 myrend.fBezierCurveSet(coordinates)
 
 # generate renders
-nDesiredRenders = 10
-# distance between the 3d object and the camera
+nCameraPositions = 1000 # also sets the number of different deformations
+nRendersPerCamPosAndDeformation = 5
+
+# mean distance between the 3d object and the camera
 rObjCam = 50 #centimeters
 # for n. of desired renders
-for nRender in range(nDesiredRenders): 
-    print('Render counter : ', nRender)
-    
+for nCameraPos in range(nCameraPositions): 
     # change rotation of the curve modifier
     myrend.fBezierCurveRotateDeltaX(4.0)
     
@@ -379,31 +379,35 @@ for nRender in range(nDesiredRenders):
     y = randRObjCam*np.cos(theta)*np.sin(alpha)
     z = randRObjCam*sin(theta) 
 
-    myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
-    myrend.fRenderCamSetLookAtPoint(myrend.f3dObjGetCentroid())
+    for nRenderPerPosDef in range(nRendersPerCamPosAndDeformation):
+        print('Render counter : ', (nCameraPos*nRendersPerCamPosAndDeformation) + nRenderPerPosDef)
 
-    # change the focal length of the camera
-    randFocal = 6.0 + 2 * np.random.rand()
-    myrend.fRenderCamSetFocalLengthmm(randFocal)    
-    currCalibrationMatrix = myrend.fRenderCamGetCalibrationMatrix()
+        myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
+        lookPoint = myrend.f3dObjGetCentroid() + Vector((np.random.rand()*10.0-5.0, np.random.rand()*10.0-5.0, np.random.rand()*10.0-5.0))
+        myrend.fRenderCamSetLookAtPoint(lookPoint)
     
-    # save the render
-    pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nRender) +'.jpg'
-    myrend.fRenderCamRender(pathToRender)    
-
-    # save the cloud, and other data
-    pathToSaveRendData = projectDir + '/data/training_defRenders/testRender' + str(nRender)
-    #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
-    allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
-    rendData = dict()
+        # change the focal length of the camera
+        randFocal = 7.0#6.0 + 2 * np.random.rand()
+        myrend.fRenderCamSetFocalLengthmm(randFocal)    
+        currCalibrationMatrix = myrend.fRenderCamGetCalibrationMatrix()
+        
+        # save the render
+        pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nCameraPos*nRendersPerCamPosAndDeformation + nRenderPerPosDef) +'.jpg'
+        myrend.fRenderCamRender(pathToRender)    
     
-    mesh = dict()
-    mesh['vertices'] = allVerts
-    mesh['normals'] = allNormals
-    rendData['mesh'] = mesh
-    
-    rendData['focalLength'] = randFocal
-    rendData['cameraMatrix'] = np.array(currCalibrationMatrix)
-    np.save(pathToSaveRendData, rendData)
+        # save the cloud, and other data
+        pathToSaveRendData = projectDir + '/data/training_defRenders/testRender' + str(nCameraPos*nRendersPerCamPosAndDeformation + nRenderPerPosDef)
+        #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
+        allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
+        rendData = dict()
+        
+        mesh = dict()
+        mesh['vertices'] = allVerts
+        mesh['normals'] = allNormals
+        rendData['mesh'] = mesh
+        
+        rendData['focalLength'] = randFocal
+        rendData['cameraMatrix'] = np.array(currCalibrationMatrix)
+        np.save(pathToSaveRendData, rendData)
     
 #---------END--OF--RENDERING--PIPELINE---
