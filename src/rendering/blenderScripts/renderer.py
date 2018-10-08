@@ -355,59 +355,72 @@ coordinates = [
 # add a curve modifier to the object
 myrend.fBezierCurveSet(coordinates)
 
-# generate renders
-nCameraPositions = 1000 # also sets the number of different deformations
-nRendersPerCamPosAndDeformation = 5
+# generate renders : parameters to control how many
+# curve modifier parameters
+nUniqueModifierRotations = 100
+nCurvaturesPerRotation = 10
+# render camera parameters
+nCamLocationsPerCurveConfig = 10
+nCamLookDirsPerLocation = 5
 
 # mean distance between the 3d object and the camera
 rObjCam = 50 #centimeters
-# for n. of desired renders
-for nCameraPos in range(nCameraPositions): 
+lookDirVar = 15.0
+
+# for each curve modifier rotation
+for nBCurveRotation in range(nUniqueModifierRotations): 
     # change rotation of the curve modifier
-    myrend.fBezierCurveRotateDeltaX(4.0)
+    myrend.fBezierCurveRotateDeltaX(360.0/(1.0 * nUniqueModifierRotations) )
     
-    # change curvature controlling params of the curve
-    myrend.fBezierCurveRandDistort()
-   
-    # change the distance of the camera from the object
-    randRObjCam = rObjCam + 10*(np.random.rand() - 0.5)
-    
-    # move the camera to a random pose wrt the object
-    alpha = (np.random.rand()*180 - 90) * np.pi/180.0
-    theta = (np.random.rand()*180 - 90) * np.pi/180.0
-    x = randRObjCam*np.cos(theta)*cos(alpha)
-    y = randRObjCam*np.cos(theta)*np.sin(alpha)
-    z = randRObjCam*sin(theta) 
+    # for each curve modifier curvature
+    for nBCurveCurvature in range(nCurvaturesPerRotation):
+        # change curvature controlling params of the curve
+        myrend.fBezierCurveRandDistort()
+       
+        # for each camera location
+        for nCamLocation in range(nCamLocationsPerCurveConfig):
+            # change the distance of the camera from the object
+            randRObjCam = rObjCam + 10*(np.random.rand() - 0.5)
+            
+            # move the camera to a random pose wrt the object
+            alpha = (np.random.rand()*180 - 90) * np.pi/180.0
+            theta = (np.random.rand()*180 - 90) * np.pi/180.0
+            x = randRObjCam*np.cos(theta)*cos(alpha)
+            y = randRObjCam*np.cos(theta)*np.sin(alpha)
+            z = randRObjCam*sin(theta) 
+            
+            myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
 
-    for nRenderPerPosDef in range(nRendersPerCamPosAndDeformation):
-        print('Render counter : ', (nCameraPos*nRendersPerCamPosAndDeformation) + nRenderPerPosDef)
-
-        myrend.fRenderCamSetLocation3dObj(Vector((x, y, z)) )
-        lookPoint = myrend.f3dObjGetCentroid() + Vector((np.random.rand()*10.0-5.0, np.random.rand()*10.0-5.0, np.random.rand()*10.0-5.0))
-        myrend.fRenderCamSetLookAtPoint(lookPoint)
-    
-        # change the focal length of the camera
-        randFocal = 7.0#6.0 + 2 * np.random.rand()
-        myrend.fRenderCamSetFocalLengthmm(randFocal)    
-        currCalibrationMatrix = myrend.fRenderCamGetCalibrationMatrix()
+            # for each camera look direction         
+            for nLookDir in range(nCamLookDirsPerLocation):
+                nRender = nBCurveRotation*nCurvaturesPerRotation*nCamLocationsPerCurveConfig*nCamLookDirsPerLocation + nBCurveCurvature*nCamLocationsPerCurveConfig*nCamLookDirsPerLocation + nCamLocation*nCamLookDirsPerLocation + nLookDir
+                print('Render counter : ', nRender)
         
-        # save the render
-        pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nCameraPos*nRendersPerCamPosAndDeformation + nRenderPerPosDef) +'.jpg'
-        myrend.fRenderCamRender(pathToRender)    
-    
-        # save the cloud, and other data
-        pathToSaveRendData = projectDir + '/data/training_defRenders/testRender' + str(nCameraPos*nRendersPerCamPosAndDeformation + nRenderPerPosDef)
-        #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
-        allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
-        rendData = dict()
-        
-        mesh = dict()
-        mesh['vertices'] = allVerts
-        mesh['normals'] = allNormals
-        rendData['mesh'] = mesh
-        
-        rendData['focalLength'] = randFocal
-        rendData['cameraMatrix'] = np.array(currCalibrationMatrix)
-        np.save(pathToSaveRendData, rendData)
+                lookPoint = myrend.f3dObjGetCentroid() + Vector((np.random.rand()*lookDirVar-lookDirVar/2, np.random.rand()*lookDirVar-lookDirVar/2, np.random.rand()*lookDirVar-lookDirVar/2))
+                myrend.fRenderCamSetLookAtPoint(lookPoint)
+            
+                # change the focal length of the camera
+                randFocal = 7.0#6.0 + 2 * np.random.rand()
+                myrend.fRenderCamSetFocalLengthmm(randFocal)    
+                currCalibrationMatrix = myrend.fRenderCamGetCalibrationMatrix()
+                
+                # save the render
+                pathToRender = projectDir + '/data/training_defRenders/testRender' + str(nRender) +'.jpg'
+                myrend.fRenderCamRender(pathToRender)    
+            
+                # save the cloud, and other data
+                pathToSaveRendData = projectDir + '/data/training_defRenders/testRender' + str(nRender)
+                #allVerts = myrend.fRenderCamSaveMeshVertsInCamFrame(savename=pathToSaveCld, meshIsTwoFaced=True)
+                allVerts, allNormals = myrend.fRenderCamGetMeshInCamFrame(meshIsTwoFaced=True)
+                rendData = dict()
+                
+                mesh = dict()
+                mesh['vertices'] = allVerts
+                mesh['normals'] = allNormals
+                rendData['mesh'] = mesh
+                
+                rendData['focalLength'] = randFocal
+                rendData['cameraMatrix'] = np.array(currCalibrationMatrix)
+                np.save(pathToSaveRendData, rendData)
     
 #---------END--OF--RENDERING--PIPELINE---
