@@ -1,4 +1,5 @@
 *.blend*
 data/
 *.mtl
+_pycache_
 
