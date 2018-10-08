@@ -422,5 +422,23 @@ for nBCurveRotation in range(nUniqueModifierRotations):
                 rendData['focalLength'] = randFocal
                 rendData['cameraMatrix'] = np.array(currCalibrationMatrix)
                 np.save(pathToSaveRendData, rendData)
+                
+    # for addressing memory leak:
+    for block in bpy.data.meshes:
+        if block.users == 0:
+            bpy.data.meshes.remove(block)
+    
+    for block in bpy.data.materials:
+        if block.users == 0:
+            bpy.data.materials.remove(block)
+    
+    for block in bpy.data.textures:
+        if block.users == 0:
+            bpy.data.textures.remove(block)
+    
+    for block in bpy.data.images:
+        if block.users == 0:
+            bpy.data.images.remove(block)
+            
     
 #---------END--OF--RENDERING--PIPELINE---
