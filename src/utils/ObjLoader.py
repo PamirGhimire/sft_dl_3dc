@@ -84,6 +84,7 @@ texcoords = np.array(texcoords)
 
 gridVertIdxs = -1 * np.ones((height, width))
 takenMap = np.zeros(vertices.shape[0])
+takenWithDistance = -1*np.ones(vertices.shape[0])
 
 for row in range(height):
     for col in range(width):
@@ -100,9 +101,10 @@ for row in range(height):
             if dst < dstMin:
                 if takenMap[i] == 0:
                     dstMin = dst
-                    gridVertIdxs[row, col] = i
+                    gridVertIdxs[row, col] = int(i)
         
         takenMap[int(gridVertIdxs[row, col])] = 1.0
+        takenWithDistance[int(gridVertIdxs[row, col])] = dstMin
         print('idx = ', str(gridVertIdxs[row, col]))
 
 # check
@@ -113,4 +115,9 @@ print('must be one greater than n. of vertices in the mesh')
 print('n. of vertices in the mesh = ', str(vertices.shape[0]) )
 print('n. of grids not associated with any mesh vertex = ', str(np.sum(gridVertIdxsUnstacked == -1)) )
 
-    
+for row in range(gridVertIdxs.shape[0]):
+    for col in range(gridVertIdxs.shape[1]):
+        if gridVertIdxs[row, col] == -1:
+            print('row, col: ', str(row), ', ', str(col))
+
+np.save('gridWithVertexIdxs.npy', gridVertIdxs)
