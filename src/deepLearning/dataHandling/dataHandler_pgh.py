@@ -47,8 +47,13 @@ class DataHandler:
         self.m_dataHandlerCache = dict(dict())
         if not (os.path.isfile(self.m_dataHandlerCachePath)):
             np.save(self.m_dataHandlerCachePath, self.m_dataHandlerCache)
+            
+    def isEmpty(self):
+        if len(self.m_dataHandlerCache) <= 0:
+            return True
+        else:
+            return False
         
-        # variables to keep track of internal object states
     def setDataExtension(self, dataExt):
         if dataExt.startswith('.'):
             self.m_dataExtension = dataExt[1:]
@@ -116,6 +121,17 @@ class DataHandler:
         else:
             return self.getFileNameWoExt(os.path.splitext(fn)[0])
 
+    def getValidationDataSize(self):
+        assert(len(self.m_dataHandlerCache) > 0)
+        return (len(self.m_dataHandlerCache['validation']['data']))
+    
+    def getTrainDataSize(self):
+        assert(len(self.m_dataHandlerCache) > 0)
+        return (len(self.m_dataHandlerCache['train']['data']))
+
+    def getTestDataSize(self):
+        assert(len(self.m_dataHandlerCache) > 0)
+        return (len(self.m_dataHandlerCache['test']['data']))
 
     def buildDataHandlerCache(self):
        print('DataHandler : Building Cache ...')
@@ -176,12 +192,13 @@ class DataHandler:
    
 
 #---------------------------
-DH = DataHandler()
-DH.setDataDir('../../../data/training_defRenders')
-DH.setLabelsDir('../../../data/training_defRenders')
-DH.setDataExtension('.png')
-DH.setLabelsExtension('.npy')
-DH.buildDataHandlerCache()
+# HOW TO USE : 
+#DH = DataHandler()
+#DH.setDataDir('../../../data/training_defRenders')
+#DH.setLabelsDir('../../../data/training_defRenders')
+#DH.setDataExtension('.png')
+#DH.setLabelsExtension('.npy')
+#DH.buildDataHandlerCache()
 
 
 
