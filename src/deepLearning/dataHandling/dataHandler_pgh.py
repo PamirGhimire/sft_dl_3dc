@@ -176,13 +176,13 @@ class DataHandler:
        for nFile in range(len(allDataFiles)):
            if (nFile < validationIndx):
                validationData.append(os.path.join( self.m_dataDir, allDataFiles[ shuffleIndx[nFile]]))
-               validationLabels.append(os.path.join( self.m_dataDir, allDataFiles[ shuffleIndx[nFile]]))
+               validationLabels.append(os.path.join( self.m_labelsDir, allLabelFiles[ shuffleIndx[nFile]]))
            elif (nFile < trainIndx):
                trainData.append(os.path.join( self.m_dataDir, allDataFiles[ shuffleIndx[nFile]]))
-               trainLabels.append(os.path.join( self.m_dataDir, allDataFiles[ shuffleIndx[nFile]]))
+               trainLabels.append(os.path.join( self.m_labelsDir, allLabelFiles[ shuffleIndx[nFile]]))
            else:
                testData.append(os.path.join( self.m_dataDir, allDataFiles[ shuffleIndx[nFile]]))
-               testLabels.append(os.path.join( self.m_dataDir, allDataFiles[ shuffleIndx[nFile]]))
+               testLabels.append(os.path.join( self.m_labelsDir, allLabelFiles[ shuffleIndx[nFile]]))
        # save the cache
        dictValidation = {'data':validationData, 'labels':validationLabels}
        dictTrain = {'data':trainData, 'labels':trainLabels}
