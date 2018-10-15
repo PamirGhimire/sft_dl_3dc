@@ -251,16 +251,29 @@ class ImageDataHandler(DataHandler):
 #--------------------------------
 # specialization of the ImageDataHandler class for handling SFT problem, when
 # labels are 3D coordinates of vertices of the template mesh
+# this class is designed specifically for a mesh with particular vertices, and 
+# UV's
 class ImageDataHandler_forSFT(ImageDataHandler):
     def __init__(self):
         ImageDataHandler.__init__(self)
+        self.gridVertIdxs = np.load('~gridWithVertexIdxs.npy')
+        self.gridWidth = 65
+        self.gridHeight = 33
         
     def loadLabels(self, labelPaths):
         assert(type(labelPaths) == list and len(labelPaths) > 0 and labelPaths[0].endswith('.npy'))
+        labels = np.zeros(len(labelPaths), self.gridHeight, self.gridWidth, 3)
+        nLabel = 0
         for labelPath in labelPaths:
             rendData = np.load(labelPath).item()
             vertices = rendData['mesh']['vertices'] 
-            intrinsics = rendData['cameraMatrix']
+            label = np.zeros((self.gridHeight, self.gridWidth, 3))
+            for r in range(self.gridHeight):
+                for c in range(self.gridWidth):
+                    label[r, c,:] = vertices[self.gridVertIdxs[r, c] ,: ]
+            labels[nLabel,:,:,:] = label
+            nLabel += 1
+            
             
         
         
