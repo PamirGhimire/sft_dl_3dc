@@ -7,7 +7,10 @@ About : Trainer creates batches out of training, validation and testing data
 that is loaded from the disk by a dataHandler (check 'dataHandler_pgh.py')
 """
 import numpy as np
-from dataHandler_pgh import DataHandler
+import time
+
+from dataHandler_pgh import DataHandler 
+from dataHandler_pgh import ImageDataHandler_forSFT
 
 class Trainer:
     def __init__(self):
@@ -149,12 +152,16 @@ class Trainer:
 #-----------------------------
 # How to use:
 # create a DataHandler
-DH = DataHandler()
+tic = time.time()
+DH = ImageDataHandler_forSFT()
 DH.setDataDir('../../../data/training_defRenders')
 DH.setLabelsDir('../../../data/training_defRenders')
 DH.setDataExtension('.png')
 DH.setLabelsExtension('.npy')
 DH.buildDataHandlerCache()
+
+toc = time.time() - tic
+print('DataHandler : time elapsed in building cache =', toc-tic )
 
 # initialize a Trainer using the Data Handler
 T = Trainer()
@@ -163,31 +170,13 @@ T.setDataHandler(DH)
 # training
 T.setTrainBatchSize(4)
 print('training batch counter : ', T.getTrainBatchCounter())
-#while (T.getTrainEpochCounter() < 3):
-#    data, labels = T.getNextTrainBatch()
-#    print('batch : ', T.getTrainBatchCounter(), '|| epoch : ', T.getTrainEpochCounter())
-#    print(data[0:5])
-#    print('--------')
-#    print(labels[0:5])
-#    print('---------------------------------------')
-#    
-## validation
-#while (T.getValidationEpochCounter() < 3):
-#    data, labels = T.getNextValidationBatch()
-#    print('validation batch : ', T.getValidationBatchCounter(), '|| validation epoch : ', T.getValidationEpochCounter())
-#    print(data[0:5])
-#    print('--------')
-#    print(labels[0:5])
-#    print('---------------------------------------')
-#    
-# testing
-T.setTestBatchSize(2)
-while (T.getTestEpochCounter() < 3):
-    data, labels = T.getNextTestBatch()
-    print('test batch : ', T.getTestBatchCounter(), '|| test epoch : ', T.getTestEpochCounter())
-    print(data[0:5])
-    print('--------')
-    print(labels[0:5])
-    print('---------------------------------------')
-    
+tic = time.time()
+while (T.getTrainBatchCounter() < T.getNMaxTrainBatches()-1):
+    dataPaths, labelPaths = T.getNextTrainBatch()
+    data = DH.loadData(imagePaths=dataPaths, grayScale=False)
+    labels = DH.loadLabels(labelPaths=labelPaths)
+    print('batch counter : ',  T.getTrainBatchCounter())    
+
+toc = time.time()
+print('time taken to fetch one batch = ', (toc-tic)/T.getNMaxTrainBatches())    
 

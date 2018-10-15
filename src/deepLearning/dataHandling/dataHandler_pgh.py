@@ -225,9 +225,10 @@ class ImageDataHandler(DataHandler):
        
        if type(imagePaths) == list:
            sampleIm = cv2.imread(imagePaths[0])
-           w = cv2.shape[1]
-           h = cv2.shape[0]
-           ch = cv2.shape[3]
+           w = sampleIm.shape[1]
+           h = sampleIm.shape[0]
+           if not grayScale:
+               ch = sampleIm.shape[2]
            d = len(imagePaths)
            if not grayScale:
                images = np.zeros((d, h, w, ch))
@@ -237,16 +238,18 @@ class ImageDataHandler(DataHandler):
            nIm = 0
            for imagePath in imagePaths:
                if not grayScale:
-                   image = cv2.imread(imagePath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-                   images[nIm,:,:] = image
-               else:
                    image = cv2.imread(imagePath)
                    images[nIm,:,:,:] = image
+               else:
+                   image = cv2.imread(imagePath)
+                   images[nIm,:,:] = image
+               nIm += 1
+           return images
        elif type(imagePaths) == str:
            if not grayScale:
                return cv2.imread(imagePath)
            else:
-               return cv2.imread(imagePath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+               return cv2.imread(imagePath, 0)
    
 #--------------------------------
 # specialization of the ImageDataHandler class for handling SFT problem, when
@@ -262,7 +265,7 @@ class ImageDataHandler_forSFT(ImageDataHandler):
         
     def loadLabels(self, labelPaths):
         assert(type(labelPaths) == list and len(labelPaths) > 0 and labelPaths[0].endswith('.npy'))
-        labels = np.zeros(len(labelPaths), self.gridHeight, self.gridWidth, 3)
+        labels = np.zeros((len(labelPaths), self.gridHeight, self.gridWidth, 3))
         nLabel = 0
         for labelPath in labelPaths:
             rendData = np.load(labelPath).item()
@@ -270,9 +273,10 @@ class ImageDataHandler_forSFT(ImageDataHandler):
             label = np.zeros((self.gridHeight, self.gridWidth, 3))
             for r in range(self.gridHeight):
                 for c in range(self.gridWidth):
-                    label[r, c,:] = vertices[self.gridVertIdxs[r, c] ,: ]
+                    label[r, c,:] = vertices[int(self.gridVertIdxs[r, c]) ,: ]
             labels[nLabel,:,:,:] = label
             nLabel += 1
+        return labels
             
             
         
