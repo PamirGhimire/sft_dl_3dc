@@ -23,6 +23,15 @@ About :
     If you have a datafile data0.dataExt in dataDir, in labelsDir, you must
     have data0.labelExt
     
+    Example usage:
+        # HOW TO USE DataHandler Class: 
+        DH = DataHandler()
+        DH.setDataDir('../../../data/training_defRenders')
+        DH.setLabelsDir('../../../data/training_defRenders')
+        DH.setDataExtension('.png') #or 'png'
+        DH.setLabelsExtension('.npy') #or 'npy'
+        DH.buildDataHandlerCache()
+    
 """
 # dependencies
 import numpy as np
@@ -192,7 +201,7 @@ class DataHandler:
    
 
 #---------------------------
-# HOW TO USE : 
+# HOW TO USE DataHandler Class: 
 #DH = DataHandler()
 #DH.setDataDir('../../../data/training_defRenders')
 #DH.setLabelsDir('../../../data/training_defRenders')
@@ -200,5 +209,58 @@ class DataHandler:
 #DH.setLabelsExtension('.npy')
 #DH.buildDataHandlerCache()
 
-
-
+#---------------------------
+# ImageDataHandler class : DataHandler class specialized for handling image data
+import cv2
+       
+class ImageDataHandler(DataHandler):
+    def __init__(self):
+        DataHandler.__init__(self);
+        
+    def loadData(self, imagePaths, grayScale=False):
+       """
+       imagePaths is a list of strings specifying paths to images to be loaded
+       """
+       assert(type(imagePaths) == list or type(imagePaths) == str)
+       
+       if type(imagePaths) == list:
+           sampleIm = cv2.imread(imagePaths[0])
+           w = cv2.shape[1]
+           h = cv2.shape[0]
+           ch = cv2.shape[3]
+           d = len(imagePaths)
+           if not grayScale:
+               images = np.zeros((d, h, w, ch))
+           else:
+               images = np.zeros((d, h, w))
+               
+           nIm = 0
+           for imagePath in imagePaths:
+               if not grayScale:
+                   image = cv2.imread(imagePath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+                   images[nIm,:,:] = image
+               else:
+                   image = cv2.imread(imagePath)
+                   images[nIm,:,:,:] = image
+       elif type(imagePaths) == str:
+           if not grayScale:
+               return cv2.imread(imagePath)
+           else:
+               return cv2.imread(imagePath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+   
+#--------------------------------
+# specialization of the ImageDataHandler class for handling SFT problem, when
+# labels are 3D coordinates of vertices of the template mesh
+class ImageDataHandler_forSFT(ImageDataHandler):
+    def __init__(self):
+        ImageDataHandler.__init__(self)
+        
+    def loadLabels(self, labelPaths):
+        assert(type(labelPaths) == list and len(labelPaths) > 0 and labelPaths[0].endswith('.npy'))
+        for labelPath in labelPaths:
+            rendData = np.load(labelPath).item()
+            vertices = rendData['mesh']['vertices'] 
+            intrinsics = rendData['cameraMatrix']
+            
+        
+        

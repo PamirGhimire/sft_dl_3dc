@@ -136,6 +136,7 @@ class Trainer:
         indices = np.mod(range(startIndx, endIndx), self.m_dataHandler.getTestDataSize())
         indices_sh = [self.m_testShuffleIndx[i] for i in indices]
         data = [self.m_dataHandler.getDataHandlerCache()['test']['data'][i] for i in indices_sh]
+        labels = [self.m_dataHandler.getDataHandlerCache()['test']['labels'][i] for i in indices_sh]
         
         self.m_testBatchCounter += 1
         if self.m_testBatchCounter >= self.m_dataHandler.getTestDataSize():
@@ -162,11 +163,31 @@ T.setDataHandler(DH)
 # training
 T.setTrainBatchSize(4)
 print('training batch counter : ', T.getTrainBatchCounter())
-while (T.getTrainEpochCounter() < 3):
-    data, labels = T.getNextTrainBatch()
-    print('batch : ', T.getTrainBatchCounter(), '|| epoch : ', T.getTrainEpochCounter())
+#while (T.getTrainEpochCounter() < 3):
+#    data, labels = T.getNextTrainBatch()
+#    print('batch : ', T.getTrainBatchCounter(), '|| epoch : ', T.getTrainEpochCounter())
+#    print(data[0:5])
+#    print('--------')
+#    print(labels[0:5])
+#    print('---------------------------------------')
+#    
+## validation
+#while (T.getValidationEpochCounter() < 3):
+#    data, labels = T.getNextValidationBatch()
+#    print('validation batch : ', T.getValidationBatchCounter(), '|| validation epoch : ', T.getValidationEpochCounter())
+#    print(data[0:5])
+#    print('--------')
+#    print(labels[0:5])
+#    print('---------------------------------------')
+#    
+# testing
+T.setTestBatchSize(2)
+while (T.getTestEpochCounter() < 3):
+    data, labels = T.getNextTestBatch()
+    print('test batch : ', T.getTestBatchCounter(), '|| test epoch : ', T.getTestEpochCounter())
     print(data[0:5])
     print('--------')
+    print(labels[0:5])
+    print('---------------------------------------')
     
-# validation
-# testing
+
