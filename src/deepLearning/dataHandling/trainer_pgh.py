@@ -5,6 +5,37 @@ Created on Sun Oct 14 17:57:22 2018
 @author: Pamir Ghimire
 About : Trainer creates batches out of training, validation and testing data 
 that is loaded from the disk by a dataHandler (check 'dataHandler_pgh.py')
+
+# How to use:
+# create a DataHandler
+#tic = time.time()
+#DH = ImageDataHandler_forSFT()
+#DH.setDataDir('../../../data/training_defRenders')
+#DH.setLabelsDir('../../../data/training_defRenders')
+#DH.setDataExtension('.png')
+#DH.setLabelsExtension('.npy')
+#DH.buildDataHandlerCache()
+#
+#toc = time.time() - tic
+#print('DataHandler : time elapsed in building cache =', toc-tic )
+#
+## initialize a Trainer using the Data Handler
+#T = Trainer()
+#T.setDataHandler(DH)
+#
+## training
+#T.setTrainBatchSize(4)
+#print('training batch counter : ', T.getTrainBatchCounter())
+#tic = time.time()
+#while (T.getTrainBatchCounter() < T.getNMaxTrainBatches()-1):
+#    dataPaths, labelPaths = T.getNextTrainBatch()
+#    data = DH.loadData(imagePaths=dataPaths, grayScale=False)
+#    labels = DH.loadLabels(labelPaths=labelPaths)
+#    print('batch counter : ',  T.getTrainBatchCounter())    
+#
+#toc = time.time()
+#print('time taken to fetch one batch = ', (toc-tic)/T.getNMaxTrainBatches())  
+
 """
 import numpy as np
 import time
@@ -150,33 +181,33 @@ class Trainer:
         return data, labels
         
 #-----------------------------
-# How to use:
-# create a DataHandler
-tic = time.time()
-DH = ImageDataHandler_forSFT()
-DH.setDataDir('../../../data/training_defRenders')
-DH.setLabelsDir('../../../data/training_defRenders')
-DH.setDataExtension('.png')
-DH.setLabelsExtension('.npy')
-DH.buildDataHandlerCache()
-
-toc = time.time() - tic
-print('DataHandler : time elapsed in building cache =', toc-tic )
-
-# initialize a Trainer using the Data Handler
-T = Trainer()
-T.setDataHandler(DH)
-
-# training
-T.setTrainBatchSize(4)
-print('training batch counter : ', T.getTrainBatchCounter())
-tic = time.time()
-while (T.getTrainBatchCounter() < T.getNMaxTrainBatches()-1):
-    dataPaths, labelPaths = T.getNextTrainBatch()
-    data = DH.loadData(imagePaths=dataPaths, grayScale=False)
-    labels = DH.loadLabels(labelPaths=labelPaths)
-    print('batch counter : ',  T.getTrainBatchCounter())    
-
-toc = time.time()
-print('time taken to fetch one batch = ', (toc-tic)/T.getNMaxTrainBatches())    
+### How to use:
+### create a DataHandler
+#tic = time.time()
+#DH = ImageDataHandler_forSFT()
+#DH.setDataDir('../../../data/training_defRenders')
+#DH.setLabelsDir('../../../data/training_defRenders')
+#DH.setDataExtension('.png')
+#DH.setLabelsExtension('.npy')
+#DH.buildDataHandlerCache()
+#
+#toc = time.time() - tic
+#print('DataHandler : time elapsed in building cache =', toc-tic )
+#
+## initialize a Trainer using the Data Handler
+#T = Trainer()
+#T.setDataHandler(DH)
+#
+## training
+#T.setTrainBatchSize(4)
+#print('training batch counter : ', T.getTrainBatchCounter())
+#tic = time.time()
+#while (T.getTrainBatchCounter() < T.getNMaxTrainBatches()-1):
+#    dataPaths, labelPaths = T.getNextTrainBatch()
+#    data = DH.loadData(imagePaths=dataPaths, grayScale=False)
+#    labels = DH.loadLabels(labelPaths=labelPaths)
+#    print('batch counter : ',  T.getTrainBatchCounter())    
+#
+#toc = time.time()
+#print('time taken to fetch one batch = ', (toc-tic)/T.getNMaxTrainBatches())  
 

@@ -233,7 +233,7 @@ class ImageDataHandler(DataHandler):
            if not grayScale:
                images = np.zeros((d, h, w, ch))
            else:
-               images = np.zeros((d, h, w))
+               images = np.zeros((d, h, w, 1))
                
            nIm = 0
            for imagePath in imagePaths:
@@ -242,14 +242,14 @@ class ImageDataHandler(DataHandler):
                    images[nIm,:,:,:] = image
                else:
                    image = cv2.imread(imagePath)
-                   images[nIm,:,:] = image
+                   images[nIm,:,:,:] = image[:,:,0].reshape((h, w, 1))
                nIm += 1
            return images
        elif type(imagePaths) == str:
            if not grayScale:
                return cv2.imread(imagePath)
            else:
-               return cv2.imread(imagePath, 0)
+               return cv2.imread(imagePath).reshape((h, w, 1))
    
 #--------------------------------
 # specialization of the ImageDataHandler class for handling SFT problem, when
