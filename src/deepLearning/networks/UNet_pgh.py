@@ -48,16 +48,16 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
                                'econv4_2':(3, 3, 512, 512), 'econv4_2b': (512,), \
                                'econv5_1':(3, 3, 512, 1024), 'econv5_1b': (1024,), \
                                'econv5_2':(3, 3, 1024, 1024), 'econv5_2b': (1024,), 
-                               'upconv4':(2, 2, 512), \
+                               'upConv4':(2, 2, 512, 1024),\
                                'dconv4_1':(3, 3, 1024, 512), 'dconv4_1b': (512,), \
                                'dconv4_2':(3, 3, 512, 512), 'dconv4_2b': (512,), \
-                               'upconv3':(2, 2, 256), \
+                               'upConv3':(2, 2, 256, 512), \
                                'dconv3_1':(3, 3, 512, 256), 'dconv3_1b': (256,), \
                                'dconv3_2':(3, 3, 256, 256), 'dconv3_2b': (256,), \
-                               'upconv2':(2, 2, 128), \
+                               'upConv2':(2, 2, 128, 256), \
                                'dconv2_1':(3, 3, 256, 128), 'dconv2_1b': (128,), \
                                'dconv2_2':(3, 3, 128, 128), 'dconv2_2b': (128,), \
-                               'upconv1':(2, 2, 64), \
+                               'upConv1':(2, 2, 64, 128), \
                                'dconv1_1':(3, 3, 128, 64), 'dconv1_1b': (64,), \
                                'dconv1_2':(3, 3, 64, 64), 'dconv1_2b': (64,)}
         self.m_unet = []
@@ -91,30 +91,27 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         econv5_2 = self.conv_layer(econv5_1, "econv5_2", trainable=trainable)
 
         # Decoder layers
-        transConv4 = self.deconv_layer(econv5_2, "transConv4", trainable=trainable)
-        concat4 = self.concat_layer(econv4_2, transConv4, "concat4")
+        upConv4 = self.upConv_layer(econv5_2, "upConv4", trainable=trainable)
+        concat4 = self.concat_layer(econv4_2, upConv4, "concat4")
         dconv4_1 = self.conv_layer(concat4, "dconv4_1", trainable=trainable)
         dconv4_2 = self.conv_layer(dconv4_1, "dconv4_2", trainable=trainable)
         
-        transConv3 = self.deconv_layer(dconv4_2, "transConv3", trainable=trainable)
-        concat3 = self.concat_layer(econv3_2, transConv3, "concat3")
+        upConv3 = self.upConv_layer(dconv4_2, "upConv3", trainable=trainable)
+        concat3 = self.concat_layer(econv3_2, upConv3, "concat3")
         dconv3_1 = self.conv_layer(concat3, "dconv3_1", trainable=trainable)
         dconv3_2 = self.conv_layer(dconv3_1, "dconv3_2", trainable=trainable)
 
-        transConv2 = self.deconv_layer(dconv3_2, "transConv2", trainable=trainable)
-        concat2 = self.concat_layer(econv2_2, transConv2, "concat2")
+        upConv2 = self.upConv_layer(dconv3_2, "upConv2", trainable=trainable)
+        concat2 = self.concat_layer(econv2_2, upConv2, "concat2")
         dconv2_1 = self.conv_layer(concat2, "dconv2_1", trainable=trainable)
         dconv2_2 = self.conv_layer(dconv2_1, "dconv2_2", trainable=trainable)
 
-        transConv1 = self.deconv_layer(dconv2_2, "transConv1", trainable=trainable)
-        concat1 = self.concat_layer(econv1_2, transConv1, "concat1")
+        upConv1 = self.upConv_layer(dconv2_2, "upConv1", trainable=trainable)
+        concat1 = self.concat_layer(econv1_2, upConv1, "concat1")
         dconv1_1 = self.conv_layer(concat1, "dconv1_1", trainable=trainable)
         dconv1_2 = self.conv_layer(dconv1_1, "dconv1_2", trainable=trainable)
-
-        # output layer
-        out = self.conv_layer(dconv1_2, "dconv1_3", trainable=trainable)
         
-        return out
+        return dconv1_2
         
     def getInputImageWidth(self):
         return self.m_inputImageWidth
@@ -135,23 +132,40 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
 
         conv = tf.nn.conv2d(bottom, filt, [1, 1, 1, 1], padding='SAME')
 
-        conv_biases = self.get_bias(name, trainable)
+        conv_biases = self.get_bias(name+'b', trainable)
         bias = tf.nn.bias_add(conv, conv_biases)
 
         relu = tf.nn.relu(bias, name=name)
         return relu
     
-    def deconv_layer(self, bottom, top, name, trainable=True):
+    def upConv_layer(self, bottom, name, trainable=True):
+        """
+        upConv_layer(bottom, name, trainable=True):
+        reference : dynamically specify batch size to compute output_shape
+        https://stackoverflow.com/questions/46885191/tf-nn-conv2d-transpose-output-shape-dynamic-batch-size
+        """
         filt = self.get_conv_filter(name, trainable)
-        output_shape = (tf.shape(top)[1:], )
-        conv = tf.nn.conv2d_transpose(bottom, filt, output_shape, strides=[1, 1, 1, 1], padding='SAME', data_format='NHWC')
         
+        batch = tf.shape(bottom)[0] 
+        height = int(2*bottom.get_shape()[1])
+        width = int(2*bottom.get_shape()[2])
+        channels = int(int(bottom.get_shape()[3])/2.0)
+        output_shape = tf.Variable([batch, height, width, channels], tf.int32)
+        conv = tf.nn.conv2d_transpose(bottom, filt, output_shape, strides=[1, 2, 2, 1], padding='SAME', data_format='NHWC')
+        
+        return conv
         
     def max_pool(self, bottom, name):
         return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
   
     def avg_pool(self, bottom, name):
         return tf.nn.avg_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
+
+    def concat_layer(self, fromEncoder, upSampled, name):
+        """
+        concat_layer(self, upsampled, fromEncoder): concatenate two tensors
+        """
+        return tf.concat([fromEncoder, upSampled], axis=-1, name=name)
 
     @abstractmethod
     def get_conv_filter(self, name, trainable):
@@ -197,9 +211,10 @@ class UNetToTrain(UNet):
         
     def get_bias(self, name, trainable):
         if self.m_initFromScratch:
-            return tf.get_collection(name=name,\
-                                     shape=self.m_trainableWei)
-
+            return tf.get_variable(name=name,\
+                                     shape=self.m_trainableWeights[name],\
+                                     initializer = tf.contrib.layers.xavier_initializer(), \
+                                     trainable=trainable)
 
         
 #---------------------------------------------
