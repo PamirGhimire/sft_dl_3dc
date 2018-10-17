@@ -30,6 +30,21 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     Input Size : batch x H x W x 3
         H = 572
         W = 572
+
+    How to use: (sample code)
+    # Test Code : How to use UNetToTrain/UNetToPredict
+    import numpy as np
+    
+    myUnet = UNetToTrain()
+    myUnet.setInitFromScratch(True)
+    myUnet.initializeWeights()
+    
+    dumImages = np.random.rand(100, 572, 572, 3)
+    with tf.Session() as sess:
+        feed_dict = {myUnet.m_inputStack:dumImages}
+        sess.run(myUnet.m_inputStack, feed_dict)    
+
+
     """
     def __init__(self):
         tf.reset_default_graph() # free up tensorflow's cache
@@ -38,8 +53,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         self.m_inputImageHeight = 572;
         self.m_inputChannels = 3
         self.m_batchNormalization = True
-        self.m_inputStack = tf.placeholder(tf.float32, (None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels))
-       
+        self.m_inputStack = None
         self.m_unet = None
         
         # network architecture related variables, filter shapes are (h, w, inChannels, outChannels)
@@ -66,7 +80,8 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
                                'dconv1_1':(3, 3, 128, 64), 'dconv1_1b': (64,), \
                                'dconv1_2':(3, 3, 64, 64), 'dconv1_2b': (64,)}
         
-    def initArch(self):
+    def initializeWeights(self):
+        self.m_inputStack = tf.placeholder(tf.float32, (None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels))
         self.m_unet = self.UnetArch(self.m_inputStack)
 
     def UnetArch(self, x):
@@ -82,7 +97,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         econv2_1 = self.conv_layer(pool1, "econv2_1", trainable=trainable)
         econv2_2 = self.conv_layer(econv2_1, "econv2_2", trainable=trainable)
         pool2 = self.max_pool(econv2_2, "pool2")
-
+        
         econv3_1 = self.conv_layer(pool2, "econv3_1", trainable=trainable)
         econv3_2 = self.conv_layer(econv3_1, "econv3_2", trainable=trainable)
         pool3 = self.max_pool(econv3_2, "pool3")
@@ -93,7 +108,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
 
         econv5_1 = self.conv_layer(pool4, "econv5_1", trainable=trainable)
         econv5_2 = self.conv_layer(econv5_1, "econv5_2", trainable=trainable)
-
+        
         # Decoder layers
         upConv4 = self.upConv_layer(econv5_2, "upConv4", trainable=trainable)
         concat4 = self.concat_layer(econv4_2, upConv4, "concat4")
@@ -104,12 +119,12 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         concat3 = self.concat_layer(econv3_2, upConv3, "concat3")
         dconv3_1 = self.conv_layer(concat3, "dconv3_1", trainable=trainable)
         dconv3_2 = self.conv_layer(dconv3_1, "dconv3_2", trainable=trainable)
-
+        
         upConv2 = self.upConv_layer(dconv3_2, "upConv2", trainable=trainable)
         concat2 = self.concat_layer(econv2_2, upConv2, "concat2")
         dconv2_1 = self.conv_layer(concat2, "dconv2_1", trainable=trainable)
         dconv2_2 = self.conv_layer(dconv2_1, "dconv2_2", trainable=trainable)
-
+        
         upConv1 = self.upConv_layer(dconv2_2, "upConv1", trainable=trainable)
         concat1 = self.concat_layer(econv1_2, upConv1, "concat1")
         dconv1_1 = self.conv_layer(concat1, "dconv1_1", trainable=trainable)
@@ -154,7 +169,8 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         height = int(2*bottom.get_shape()[1])
         width = int(2*bottom.get_shape()[2])
         channels = int(int(bottom.get_shape()[3])/2.0)
-        output_shape = tf.Variable([batch, height, width, channels], tf.int32)
+        output_shape = tf.Variable([batch, height, width, channels], \
+                                   tf.int32, name=name+'_outputShape')
         conv = tf.nn.conv2d_transpose(bottom, filt, output_shape, strides=[1, 2, 2, 1], padding='SAME', data_format='NHWC')
         
         return conv
@@ -179,19 +195,24 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     def get_bias(self, name, trainable):
         pass
 
-    # save weights method
-    # load weights method
+    # save model
+    # load previously saved model
     
 #---------------------------------------------
-# specialization of the UNet class to predict vertices of a template
-# plan : add 3 convolutional layers after the final feature map (two 3x3 convs,
-# 1 1x1 conv, predictions to be in a 'crop' of the output of the 1x1 conv layer)
 
-#---------------------------------------------
-
-# specialization of the u-net class for training a model from scratch (or by
-# starting with weights from a pre-training)
 class UNetToTrain(UNet):
+    """
+     Specialization of the u-net class for training a model by initializing weights
+     from scratch (or from a weights file (ckpt or .npy))
+     
+     This specialization does not define a mapping from the final feature layer
+     to the desired output map (like the 1x1 convolutions in original UNet paper)
+     
+     This prevents specific cost functions from being defined in the class
+     
+     To train the UNet to produce a specific kind of output, check the
+     specializations below
+    """
     def __init__(self):
         UNet.__init__(self)
         self.m_initFromScratch = True
@@ -212,6 +233,9 @@ class UNetToTrain(UNet):
                                    shape=self.m_trainableWeights[name], \
                                    initializer = tf.contrib.layers.xavier_initializer(), \
                                    trainable=trainable)
+        else:
+            #@todo : add support to init weights from a file (ckpt or .npy)
+            pass
         
     def get_bias(self, name, trainable):
         if self.m_initFromScratch:
@@ -219,32 +243,66 @@ class UNetToTrain(UNet):
                                      shape=self.m_trainableWeights[name],\
                                      initializer = tf.contrib.layers.xavier_initializer(), \
                                      trainable=trainable)
+        else:
+            #@todo : add support to init weights from a file (ckpt or .npy)
+            pass
 
         
 #---------------------------------------------
-# Test Code : How to use UNetToTrain/UNetToPredict
+class UNetToTrainForSFT(UNetToTrain):
+    """
+     Specialization of the trainable UNet class to predictvertices of a template
+     You can find the specifications of the input in UNet class
+     
+     In this specialization, to the output of the UNet, we append 2 conv. 
+     layers, the vertex coordinates are predicted by the second layer which is 
+     the output of a 1x1 convolutional layer
+     The 3 convolutional layers apply padding such that the width and height of
+     final feature map produced by the UNet do not change
+     Because the number of vertex locations we want to predict are less than 
+     the number of 'pixels' in the output of the 1x1 conv. layer, the network
+     is trained to produce the vertex locations only in the upper left corner
+     of the output
+     
+     To train this class, you have to provide labels in form of a tensor 
+     that describe (in a grid) the 3D coordinates of vertices of a template 
+     mesh corresponding to the object in the input image
+     
+     
+     @todo : add 3 convolutional layers after the final feature map (two 3x3 convs,
+     1 1x1 conv, predictions to be in a 'crop' of the output of the 1x1 conv layer)
+    """
+    def __init__(self):
+        UNetToTrain.__init__(self)
+        self.m_vertexPredictions = None
+        self.m_label = None
+        
+        # weights specific to this specialization
+        self.m_trainableWeights['dconv1_3'] = (3, 3, 64, 3)
+        self.m_trainableWeights['dconv1_3b'] = (3,)
+        self.m_trainableWeights['dconv1_4'] = (1, 1, 3, 3)
+        self.m_trainableWeights['dconv1_4b'] = (3,)
+
+    def initializeWeights(self):
+        super(UNetToTrain, self).initializeWeights()
+        #self.m_vertexPredictions = self.getVertexPredictions(self.m_unet)
+        
+
+#---------------------------------------------
+#How to use: (sample code)
+    # Test Code : How to use UNetToTrain/UNetToPredict
 import numpy as np
 
 myUnet = UNetToTrain()
 myUnet.setInitFromScratch(True)
-myUnet.initArch()
 
 dumImages = np.random.rand(100, 572, 572, 3)
-with tf.Session() as sess:
-    feed_dict = {myUnet.m_inputStack:dumImages}
-    sess.run(myUnet.m_inputStack, feed_dict)    
 
-
-
-#def getFactors(num):
-#    factors = []
-#    for i in range(1, num):
-#        if np.mod(num, i) == 0:
-#            factors.append(i)
-#    factors.append(num)
-#    return factors
-#
-#print(getFactors(2154))
-
-
-        
+with tf.Graph().as_default():
+    myUnet.initializeWeights()
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+     
+        feed_dict = {myUnet.m_inputStack:dumImages}
+        sess.run(myUnet.m_unet, feed_dict=feed_dict)    
+    

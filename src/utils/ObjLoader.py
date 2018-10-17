@@ -120,4 +120,4 @@ for row in range(gridVertIdxs.shape[0]):
         if gridVertIdxs[row, col] == -1:
             print('row, col: ', str(row), ', ', str(col))
 
-np.save('gridWithVertexIdxs.npy', gridVertIdxs)
+np.save('gridWithVertexIdxs.npy', gridVertIdxs)                     
