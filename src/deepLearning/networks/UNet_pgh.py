@@ -26,6 +26,10 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     
     Classes inheriting form UNet are free to extend the architecture to produce
     an output of arbitrary dimensions
+    
+    Input Size : batch x H x W x 3
+        H = 572
+        W = 572
     """
     def __init__(self):
         tf.reset_default_graph() # free up tensorflow's cache
@@ -36,6 +40,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         self.m_batchNormalization = True
         self.m_inputStack = tf.placeholder(tf.float32, (None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels))
        
+        self.m_unet = None
         
         # network architecture related variables, filter shapes are (h, w, inChannels, outChannels)
         self.m_trainableWeights = {'econv1_1':(3, 3, 3, 64), 'econv1_1b': (64,), \
@@ -60,7 +65,6 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
                                'upConv1':(2, 2, 64, 128), \
                                'dconv1_1':(3, 3, 128, 64), 'dconv1_1b': (64,), \
                                'dconv1_2':(3, 3, 64, 64), 'dconv1_2b': (64,)}
-        self.m_unet = []
         
     def initArch(self):
         self.m_unet = self.UnetArch(self.m_inputStack)
@@ -219,9 +223,18 @@ class UNetToTrain(UNet):
         
 #---------------------------------------------
 # Test Code : How to use UNetToTrain/UNetToPredict
+import numpy as np
+
 myUnet = UNetToTrain()
 myUnet.setInitFromScratch(True)
 myUnet.initArch()
+
+dumImages = np.random.rand(100, 572, 572, 3)
+with tf.Session() as sess:
+    feed_dict = {myUnet.m_inputStack:dumImages}
+    sess.run(myUnet.m_inputStack, feed_dict)    
+
+
 
 #def getFactors(num):
 #    factors = []
