@@ -19,6 +19,13 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     
     The final output is produced by applying a convolution to the output of the 
     last convolutional level in the decoder
+    
+    # note : econvx_y and dconvx_y correspond to convolutional filters in 
+    # encoder and decoder parts of the Unet (dconv does not imply
+    # deconvolutional layer related information)
+    
+    Classes inheriting form UNet are free to extend the architecture to produce
+    an output of arbitrary dimensions
     """
     def __init__(self):
         tf.reset_default_graph() # free up tensorflow's cache
@@ -27,32 +34,41 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         self.m_inputImageHeight = 572;
         self.m_inputChannels = 3
         self.m_batchNormalization = True
-        self.m_inputStack = tf.placeholder(tf.float16, (None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels))
+        self.m_inputStack = tf.placeholder(tf.float32, (None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels))
        
         
-        # network architecture related variables
-        self.m_variableNames = {'econv1_1':(3, 3, 64), 'econv1_1b': (64,), \
-                                'econv1_2':(3, 3, 64), 'econv1_2b': (64,), \
-                               'econv2_1':(3, 3, 128), 'econv2_1b': (128,), \
-                               'econv2_2':(3, 3, 128), 'econv2_2b': (128,), \
-                               'econv3_1':(3, 3, 256), 'econv3_1b': (256,), \
-                               'econv3_2':(3, 3, 256), 'econv3_2b': (256,), \
-                               'econv4_1':(3, 3, 512), 'econv4_1b': (512,), \
-                               'econv4_2':(3, 3, 512), 'econv4_2b': (512,), \
-                               'econv5_1':(3, 3, 1024), 'econv5_1b': (1024,), \
-                               'econv5_2': (), 'econv5_2b', \
-                               'dconv4_1', 'dconv4_1b', 'dconv4_2', 'dconv4_2b',\
-                               'dconv3_1', 'dconv3_1b', 'dconv3_2', 'dconv3_2b',\
-                               'dconv2_1', 'dconv2_1b', 'dconv2_2', 'dconv2_2b',\
-                               'dconv1_1', 'dconv1_1b', 'dconv1_2', 'dconv1_2b',\
-                               'donv1_3', 'dconv1_3b'] 
+        # network architecture related variables, filter shapes are (h, w, inChannels, outChannels)
+        self.m_trainableWeights = {'econv1_1':(3, 3, 3, 64), 'econv1_1b': (64,), \
+                                'econv1_2':(3, 3, 64, 64), 'econv1_2b': (64,), \
+                               'econv2_1':(3, 3, 64, 128), 'econv2_1b': (128,), \
+                               'econv2_2':(3, 3, 128, 128), 'econv2_2b': (128,), \
+                               'econv3_1':(3, 3, 128, 256), 'econv3_1b': (256,), \
+                               'econv3_2':(3, 3, 256, 256), 'econv3_2b': (256,), \
+                               'econv4_1':(3, 3, 256, 512), 'econv4_1b': (512,), \
+                               'econv4_2':(3, 3, 512, 512), 'econv4_2b': (512,), \
+                               'econv5_1':(3, 3, 512, 1024), 'econv5_1b': (1024,), \
+                               'econv5_2':(3, 3, 1024, 1024), 'econv5_2b': (1024,), 
+                               'upconv4':(2, 2, 512), \
+                               'dconv4_1':(3, 3, 1024, 512), 'dconv4_1b': (512,), \
+                               'dconv4_2':(3, 3, 512, 512), 'dconv4_2b': (512,), \
+                               'upconv3':(2, 2, 256), \
+                               'dconv3_1':(3, 3, 512, 256), 'dconv3_1b': (256,), \
+                               'dconv3_2':(3, 3, 256, 256), 'dconv3_2b': (256,), \
+                               'upconv2':(2, 2, 128), \
+                               'dconv2_1':(3, 3, 256, 128), 'dconv2_1b': (128,), \
+                               'dconv2_2':(3, 3, 128, 128), 'dconv2_2b': (128,), \
+                               'upconv1':(2, 2, 64), \
+                               'dconv1_1':(3, 3, 128, 64), 'dconv1_1b': (64,), \
+                               'dconv1_2':(3, 3, 64, 64), 'dconv1_2b': (64,)}
+        self.m_unet = []
         
-        
-        # abstract method for initialization:
-        #       trainer should initialize them from scratch 
-        #       tester/predictor should initialize them from a file
-    
+    def initArch(self):
+        self.m_unet = self.UnetArch(self.m_inputStack)
+
     def UnetArch(self, x):
+        """
+        UnetArch(x): 'x' is input tensor of dimensions (N, H, W, C)
+        """
         trainable = True
         # Encoder layers:
         econv1_1 = self.conv_layer(x, "econv1_1", trainable=trainable)
@@ -125,11 +141,12 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         relu = tf.nn.relu(bias, name=name)
         return relu
     
-    def deconv_layer(self, bottom, name, trainable=True):
+    def deconv_layer(self, bottom, top, name, trainable=True):
         filt = self.get_conv_filter(name, trainable)
-#        output_shape = (tf.shape(self.m_inputStack)[0], )
+        output_shape = (tf.shape(top)[1:], )
         conv = tf.nn.conv2d_transpose(bottom, filt, output_shape, strides=[1, 1, 1, 1], padding='SAME', data_format='NHWC')
-    
+        
+        
     def max_pool(self, bottom, name):
         return tf.nn.max_pool(bottom, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME', name=name)
   
@@ -148,6 +165,12 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     # load weights method
     
 #---------------------------------------------
+# specialization of the UNet class to predict vertices of a template
+# plan : add 3 convolutional layers after the final feature map (two 3x3 convs,
+# 1 1x1 conv, predictions to be in a 'crop' of the output of the 1x1 conv layer)
+
+#---------------------------------------------
+
 # specialization of the u-net class for training a model from scratch (or by
 # starting with weights from a pre-training)
 class UNetToTrain(UNet):
@@ -162,5 +185,38 @@ class UNetToTrain(UNet):
         return self.m_initFromScratch
     
     def get_conv_filter(self, name, trainable):
+        """
+        returns a convolutional filter initialized from sratch or from
+        a weights file
+        """
         if self.m_initFromScratch:
-            return 
+            return tf.get_variable(name=name, \
+                                   shape=self.m_trainableWeights[name], \
+                                   initializer = tf.contrib.layers.xavier_initializer(), \
+                                   trainable=trainable)
+        
+    def get_bias(self, name, trainable):
+        if self.m_initFromScratch:
+            return tf.get_collection(name=name,\
+                                     shape=self.m_trainableWei)
+
+
+        
+#---------------------------------------------
+# Test Code : How to use UNetToTrain/UNetToPredict
+myUnet = UNetToTrain()
+myUnet.setInitFromScratch(True)
+myUnet.initArch()
+
+#def getFactors(num):
+#    factors = []
+#    for i in range(1, num):
+#        if np.mod(num, i) == 0:
+#            factors.append(i)
+#    factors.append(num)
+#    return factors
+#
+#print(getFactors(2154))
+
+
+        
