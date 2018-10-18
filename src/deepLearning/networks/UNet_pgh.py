@@ -49,8 +49,8 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     def __init__(self):
         tf.reset_default_graph() # free up tensorflow's cache
         
-        self.m_inputImageWidth = 572;
-        self.m_inputImageHeight = 572;
+        self.m_inputImageWidth = 480;
+        self.m_inputImageHeight = 480;
         self.m_inputChannels = 3
         self.m_batchNormalization = True
         self.m_inputStack = None
@@ -88,27 +88,37 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         """
         UnetArch(x): 'x' is input tensor of dimensions (N, H, W, C)
         """
+        print('shape of x : ', x.get_shape())
         trainable = True
         # Encoder layers:
         econv1_1 = self.conv_layer(x, "econv1_1", trainable=trainable)
-        econv1_2 = self.conv_layer(econv1_1, "econv1_2", trainable=trainable)    
+        econv1_2 = self.conv_layer(econv1_1, "econv1_2", trainable=trainable)
+        print('shape of encov1_2 : ', econv1_2.get_shape())
         pool1 = self.max_pool(econv1_2, "pool1")
+        print('shape of pool1 : ', pool1.get_shape())
         
         econv2_1 = self.conv_layer(pool1, "econv2_1", trainable=trainable)
         econv2_2 = self.conv_layer(econv2_1, "econv2_2", trainable=trainable)
+        print('shape of encov2_2 : ', econv2_2.get_shape())
         pool2 = self.max_pool(econv2_2, "pool2")
+        print('shape of pool2 : ', pool2.get_shape())
         
         econv3_1 = self.conv_layer(pool2, "econv3_1", trainable=trainable)
         econv3_2 = self.conv_layer(econv3_1, "econv3_2", trainable=trainable)
+        print('shape of encov3_2 : ', econv3_2.get_shape())
         pool3 = self.max_pool(econv3_2, "pool3")
+        print('shape of pool3 : ', pool3.get_shape())
 
         econv4_1 = self.conv_layer(pool3, "econv4_1", trainable=trainable)
+        print('shape of encov4_1 : ', econv4_1.get_shape())
         econv4_2 = self.conv_layer(econv4_1, "econv4_2", trainable=trainable)
         pool4 = self.max_pool(econv4_2, "pool4")
+        print('shape of pool4 : ', pool4.get_shape())
 
         econv5_1 = self.conv_layer(pool4, "econv5_1", trainable=trainable)
         econv5_2 = self.conv_layer(econv5_1, "econv5_2", trainable=trainable)
-        
+        print('shape of encov5_2 : ', econv5_2.get_shape())
+
         # Decoder layers
         upConv4 = self.upConv_layer(econv5_2, "upConv4", trainable=trainable)
         concat4 = self.concat_layer(econv4_2, upConv4, "concat4")
@@ -169,8 +179,9 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         height = int(2*bottom.get_shape()[1])
         width = int(2*bottom.get_shape()[2])
         channels = int(int(bottom.get_shape()[3])/2.0)
-        output_shape = tf.Variable([batch, height, width, channels], \
-                                   tf.int32, name=name+'_outputShape')
+        #output_shape = tf.Variable([batch, height, width, channels], \
+                                   #tf.int32, name=name+'_outputShape', trainable=False)
+        output_shape = [batch, height, width, channels]
         conv = tf.nn.conv2d_transpose(bottom, filt, output_shape, strides=[1, 2, 2, 1], padding='SAME', data_format='NHWC')
         
         return conv
@@ -296,7 +307,7 @@ import numpy as np
 myUnet = UNetToTrain()
 myUnet.setInitFromScratch(True)
 
-dumImages = np.random.rand(100, 572, 572, 3)
+dumImages = np.random.rand(10, 480, 480, 3)
 
 with tf.Graph().as_default():
     myUnet.initializeWeights()
