@@ -31,18 +31,38 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         H = 572
         W = 572
 
-    How to use: (sample code)
-    # Test Code : How to use UNetToTrain/UNetToPredict
-    import numpy as np
-    
-    myUnet = UNetToTrain()
-    myUnet.setInitFromScratch(True)
-    myUnet.initializeWeights()
-    
-    dumImages = np.random.rand(100, 572, 572, 3)
-    with tf.Session() as sess:
-        feed_dict = {myUnet.m_inputStack:dumImages}
-        sess.run(myUnet.m_inputStack, feed_dict)    
+    ##How to use: (sample code)
+    ##Test Code : How to use UNetToTrain/UNetToPredict
+    #
+    #import numpy as np
+    #
+    #myUnet = UNetToTrainForSFT()
+    #myUnet.setInitFromScratch(True)
+    #
+    #bsize = 2
+    #dumImages = np.random.rand(bsize, 480, 480, 3)
+    #dumLabels = np.random.rand(bsize, 480, 480, 3)
+    #
+    #with tf.Graph().as_default():
+    #    myUnet.initializeWeights()
+    #    myUnet.initializeMomentumOptimizer()
+    #    myUnet.initializeAdamOptimizer()
+    #    myUnet.initializePerVertexl2Cost()
+    #    
+    #    with tf.Session() as sess:
+    #        sess.run(tf.global_variables_initializer())
+    #     
+    #        feed_dict = {myUnet.m_inputStack:dumImages, myUnet.m_vertexLabels:dumLabels}
+    #        cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
+    #        print('cost before = ', cost)
+    #
+    #        for iter in range(10):
+    #            sess.run(myUnet.m_minimizeL2CostMomentum, feed_dict=feed_dict)
+    #        for iter in range(10):
+    #            sess.run(myUnet.m_minimizeL2CostAdam, feed_dict=feed_dict)
+    #        
+    #        cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
+    #        print('cost after = ', cost)    
 
 
     """
@@ -86,7 +106,9 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
                                'dconv1_2':(3, 3, 64, 64), 'dconv1_2b': (64,)}
         
     def initializeWeights(self):
-        self.m_inputStack = tf.placeholder(tf.float32, (None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels))
+        self.m_inputStack = tf.placeholder(tf.float32, \
+                                           shape=(None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels),\
+                                           name='UNetInputStack')
         self.m_unet = self.UnetArch(self.m_inputStack)
         
     def initializeAdamOptimizer(self):
@@ -98,7 +120,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         initializeMomentumOptimizer() : momentum optimizer to minimize a cost
         """
         global_step = tf.Variable(0, trainable=False, name='MomentumOptimizerGlobalStep')
-        starter_learning_rate = 0.005
+        starter_learning_rate = 0.01
         learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, 1000, 0.96, staircase=True, name='MomentumOptimizerExpDecayLR')
         self.m_momentumTrainer = tf.train.MomentumOptimizer(learning_rate, 0.9, name = 'UNetMomentumOptimizer')
         self.m_usingMomentumTrainer = True
@@ -314,7 +336,11 @@ class UNetToTrainForSFT(UNetToTrain):
         vertices from feature maps predicted by the U-Net
         """
         super(UNetToTrain, self).initializeWeights()
-        self.m_vertexLabels = tf.placeholder(tf.float32, shape=(None, 480, 480, 3), name='vertexLabels')
+
+        # labels are in a 33x65 grid (w x h)
+        self.m_gridWidth = 65
+        self.m_gridHeight = 33
+        self.m_vertexLabels = tf.placeholder(tf.float32, shape=(None, self.m_gridHeight, self.m_gridWidth, 3), name='vertexLabels')
         self.m_vertexPredictions = tf.placeholder(tf.float32, shape=(None, 480, 480, 3), name='vertexPredictions')
 
         self.m_vertexPredictions = self.getVertexPredictions(self.m_unet)
@@ -353,37 +379,40 @@ class UNetToTrainForSFT(UNetToTrain):
         
         """
         print('l2 cost from predicted vertex locaitons')
-        cost = tf.nn.l2_loss(vertexPredictions - vertexLabels, name='l2LossUNetForSFT')
+        cost = tf.nn.l2_loss(vertexPredictions[:,0:self.m_gridHeight, 0:self.m_gridWidth, 0:3] - vertexLabels, name='l2LossUNetForSFT')
         return cost
         
 
 #---------------------------------------------
-#How to use: (sample code)
-#Test Code : How to use UNetToTrain/UNetToPredict
-
-import numpy as np
-
-myUnet = UNetToTrainForSFT()
-myUnet.setInitFromScratch(True)
-
-bsize = 2
-dumImages = np.random.rand(bsize, 480, 480, 3)
-dumLabels = np.random.rand(bsize, 480, 480, 3)
-
-with tf.Graph().as_default():
-    myUnet.initializeWeights()
-    myUnet.initializeMomentumOptimizer()
-    myUnet.initializePerVertexl2Cost()
-    
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-     
-        feed_dict = {myUnet.m_inputStack:dumImages, myUnet.m_vertexLabels:dumLabels}
-        cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
-        print('cost before = ', cost)
-
-        for iter in range(10):
-            sess.run(myUnet.m_minimizeL2CostMomentum, feed_dict=feed_dict)
-        
-        cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
-        print('cost after = ', cost)        
+##How to use: (sample code)
+##Test Code : How to use UNetToTrain/UNetToPredict
+#
+#import numpy as np
+#
+#myUnet = UNetToTrainForSFT()
+#myUnet.setInitFromScratch(True)
+#
+#bsize = 4
+#dumImages = np.random.rand(bsize, 480, 480, 3)
+#dumLabels = np.random.rand(bsize, 33, 65, 3)
+#
+#with tf.Graph().as_default():
+#    myUnet.initializeWeights()
+#    myUnet.initializeMomentumOptimizer()
+#    myUnet.initializeAdamOptimizer()
+#    myUnet.initializePerVertexl2Cost()
+#    
+#    with tf.Session() as sess:
+#        sess.run(tf.global_variables_initializer())
+#     
+#        feed_dict = {myUnet.m_inputStack:dumImages, myUnet.m_vertexLabels:dumLabels}
+#        cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
+#        print('cost before = ', cost)
+#
+#        for iter in range(10):
+#            sess.run(myUnet.m_minimizeL2CostMomentum, feed_dict=feed_dict)
+#        for iter in range(10):
+#            sess.run(myUnet.m_minimizeL2CostAdam, feed_dict=feed_dict)
+#        
+#        cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
+#        print('cost after = ', cost)        

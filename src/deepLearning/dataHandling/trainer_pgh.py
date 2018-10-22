@@ -44,6 +44,21 @@ from dataHandler_pgh import DataHandler
 from dataHandler_pgh import ImageDataHandler_forSFT
 
 class Trainer:
+    """
+    The Trainer is supposed to use the work done by DataHandler in surveying
+    data and label files and generate batches of {data, label} for training a
+    neural network
+    
+    This class helps to facilitate, for example, reshuffling of data after 
+    every epoch for further training
+    
+    You can specify different batch sizes for validation, training and test
+    splits of your data and simply query the Trainer for the 'next batch' of 
+    data from one of these splits
+    
+    You can also query the 'current epoch' in one of the splits (validation, train
+    test) after having asked the trainer for some 'next batch'es
+    """
     def __init__(self):
         self.m_dataHandler = DataHandler()
             
@@ -66,6 +81,10 @@ class Trainer:
         self.m_testShuffleIndx = []
         
     def setDataHandler(self, dataHandler):
+        """
+        setDataHandler(dataHandler) : spefify the dataHandler that the trainer
+        is to use, must be of type DataHandler, refer dataHandler_phg.py
+        """
         assert(~dataHandler.isEmpty())
         self.m_dataHandler = dataHandler
         self.m_validationShuffleIndx = np.random.permutation(dataHandler.getValidationDataSize())
@@ -73,63 +92,125 @@ class Trainer:
         self.m_testShuffleIndx = np.random.permutation(dataHandler.getTestDataSize())
     
     def setTrainBatchSize(self, trainBatchSize):
+        """
+        setTrainBatchSize(trainBatchSize : int) : specify batch size of the 
+        training split of the data
+        """
         assert(trainBatchSize >= 1)
         assert(~self.m_dataHandler.isEmpty())
         assert(trainBatchSize <= self.m_dataHandler.getTrainDataSize())
         self.m_trainBatchSize = trainBatchSize
         
     def getTrainBatchSize(self):
+        """
+        getTrainBatchSize() : get batch size of the training split of the data
+        """
         return self.m_trainBatchSize
     
     def setValidationBatchSize(self, validationBatchSize):
+        """
+        setValidationBatchSize(validationBatchSize : int) : specify batch size of the 
+        validation split of the data
+        """        
         assert (validationBatchSize >= 1)
         assert(~self.m_dataHandler.isEmpty())
         assert(validationBatchSize <= self.m_dataHandler.getValidationDataSize())
         self.m_validationBatchSize = validationBatchSize
         
     def getValidationBatchSize(self):
+        """
+        getValidationBatchSize() : get batch size of the validation split of the data
+        """
         return self.m_validationBatchSize
     
     def setTestBatchSize(self, testBatchSize):
+        """
+        setTestBatchSize(testBatchSize : int) : specify batch size of the 
+        test split of the data
+        """
         assert(testBatchSize >= 1)
         assert(~self.m_dataHandler.isEmpty())
         assert(testBatchSize <= self.m_dataHandler.getTestDataSize())
         self.m_testBatchSize = testBatchSize
             
     def getTestBatchSize(self):
+        """
+        getTestBatchSize() : get batch size of the test split of the data
+        """
         return self.m_testBatchSize
     
     def getNMaxValidationBatches(self):
+        """
+        getNMaxValidationBatches(): Maximum number of validation batches at
+        specified validation batch size in one epoch
+        """
         assert(~self.m_dataHandler.isEmpty())
         return int(np.floor(self.m_dataHandler.getValidationDataSize() / self.m_validationBatchSize) + 1)
 
     def getNMaxTrainBatches(self):
+        """
+        getNMaxTrainBatches(): Maximum number of train batches at
+        specified train batch size in one epoch
+        """
         assert(~self.m_dataHandler.isEmpty())
         return int(np.floor(self.m_dataHandler.getTrainDataSize() / self.m_trainBatchSize) + 1)
 
     def getNMaxTestBatches(self):
+        """
+        getNMaxTestBatches(): Maximum number of test batches at
+        specified test batch size in one epoch
+        """
         assert(~self.m_dataHandler.isEmpty())
         return int(np.floor(self.m_dataHandler.getTestDataSize() / self.m_testBatchSize) + 1)
     
     def getValidationBatchCounter(self):
+        """
+        getValidationBatchCounter() : get the number of validation batches fetched
+        from the trainer in the current epoch
+        """
         return self.m_validationBatchCounter
         
     def getTrainBatchCounter(self):
+        """
+        getTrainBatchCounter() : get the number of train batches fetched
+        from the trainer in the current epoch
+        """      
         return self.m_trainBatchCounter
         
     def getTestBatchCounter(self):
+        """
+        getTestBatchCounter() : get the number of test batches fetched
+        from the trainer in the current epoch
+        """   
         return self.m_testBatchCounter
         
     def getValidationEpochCounter(self):
+        """
+        getValidationEpochCounter() : get the number of validation epochs fetched
+        from the Trainer 
+        """  
         return self.m_validationEpochCounter
     
     def getTrainEpochCounter(self):
+        """
+        getTrainEpochCounter() : get the number of train epochs fetched
+        from the Trainer        
+        """
         return self.m_trainEpochCounter
     
     def getTestEpochCounter(self):
+        """
+        getTestEpochCounter() : get the number of test epochs fetched
+        from the Trainer
+        """
         return self.m_testEpochCounter
         
     def getNextValidationBatch(self):
+        """
+        getNextValidationBatch() : get the next batch of data and labels from the 
+        validation split of the data in Trainer's DataHandler containing specified
+        number of items in one validation batch (validationBatchSize)
+        """
         assert(~self.m_dataHandler.isEmpty())
         startIndx = self.m_validationBatchSize * self.getValidationBatchCounter()
         endIndx = startIndx + self.getValidationBatchSize()
@@ -147,6 +228,11 @@ class Trainer:
         return data, labels
         
     def getNextTrainBatch(self):
+        """
+        getNextTrainBatch() : get the next batch of data and labels from the 
+        train split of the data in Trainer's DataHandler containing specified
+        number of items in one train batch (trainBatchSize)
+        """
         assert(~self.m_dataHandler.isEmpty())
         startIndx = self.m_trainBatchSize * self.getTrainBatchCounter()
         endIndx = startIndx + self.getTrainBatchSize()
@@ -164,6 +250,11 @@ class Trainer:
         return data, labels
         
     def getNextTestBatch(self):
+        """
+        getNextTestBatch() : get the next batch of data and labels from the 
+        test split of the data in Trainer's DataHandler containing specified
+        number of items in one test batch (trainBatchSize)
+        """       
         assert(~self.m_dataHandler.isEmpty())
         startIndx = self.m_testBatchSize * self.getTestBatchCounter()
         endIndx = startIndx + self.getTestBatchSize()
@@ -181,8 +272,8 @@ class Trainer:
         return data, labels
         
 #-----------------------------
-### How to use:
-### create a DataHandler
+## How to use:
+## create a DataHandler
 #tic = time.time()
 #DH = ImageDataHandler_forSFT()
 #DH.setDataDir('../../../data/training_defRenders')
