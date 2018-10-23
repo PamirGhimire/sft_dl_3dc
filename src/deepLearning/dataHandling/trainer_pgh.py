@@ -242,8 +242,8 @@ class Trainer:
         labels = [self.m_dataHandler.getDataHandlerCache()['train']['labels'][i] for i in indices_sh]
         
         self.m_trainBatchCounter += 1
-        if self.m_trainBatchCounter >= self.m_dataHandler.getTrainDataSize():
-            self.m_trainBatchCounter = np.mod(self.m_trainBatchCounter, self.m_dataHandler.getTrainDataSize())
+        if self.m_trainBatchCounter >= self.getNMaxTrainBatches():
+            self.m_trainBatchCounter = np.mod(self.m_trainBatchCounter, self.getNMaxTrainBatches())
             self.m_trainEpochCounter += 1
             self.m_trainShuffleIndx = np.random.permutation(self.m_dataHandler.getTrainDataSize())
         

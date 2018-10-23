@@ -80,10 +80,13 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         self.m_inputStack = None
         self.m_unet = None
         
+        # optimizers
         self.m_momentumTrainer = None
         self.m_usingMomentumTrainer = False
         self.m_adamTrainer= None
         self.m_usingAdamTrainer = False
+        self.m_sgdTrainer = None
+        self.m_usingSgdTrainer= False
         
         # network architecture related variables, filter shapes are (h, w, inChannels, outChannels)
         self.m_trainableWeights = {'econv1_1':(3, 3, 3, 64), 'econv1_1b': (64,), \
@@ -115,6 +118,10 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
                                            name='UNet_m_inputStack')
         self.m_unet = self.UnetArch(self.m_inputStack)
         
+    def initializeSgdOptimizer(self):
+        self.m_sgdTrainer = tf.train.GradientDescentOptimizer(0.1, name='UNet_SgdTrainer')
+        self.m_usingSgdTrainer = True
+        
     def initializeAdamOptimizer(self):
         self.m_adamTrainer = tf.train.AdamOptimizer(learning_rate=0.005, name='UNet_AdamTrainer')
         self.m_usingAdamTrainer = True
@@ -124,7 +131,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         initializeMomentumOptimizer() : momentum optimizer to minimize a cost
         """
         global_step = tf.Variable(0, trainable=False, name='MomentumOptimizerGlobalStep')
-        starter_learning_rate = 0.01
+        starter_learning_rate = 0.001
         learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, 1000, 0.96, staircase=True, name='UNet_MomentumOptimizerExpDecayLR')
         self.m_momentumTrainer = tf.train.MomentumOptimizer(learning_rate, 0.9, name = "UNet_m_momentumTrainer")
         self.m_usingMomentumTrainer = True
@@ -338,10 +345,10 @@ class UNetToTrainForSFT(UNetToTrain):
         self.m_vertexLabels = None
         self.m_vertexPredictions = None
         self.m_l2PredictionCost = None # loss for per-vertex error in predicted locations    
-        # op for minimizing per-vertex l2 errors in predicted vertex positions using momentum optimizer
+        # op for minimizing per-vertex l2 errors in predicted vertex positions different optimizers
         self.m_minimizeL2CostMomentum = None  
-        # op for minimizing per-vertex l2 errors in predicted vertex positions using adam optimizer
         self.m_minimizeL2CostAdam = None
+        self.m_minimizeL2CostSgd = None
 
         self.m_metaFileDir = ''
         self.m_saver = None
@@ -374,11 +381,14 @@ class UNetToTrainForSFT(UNetToTrain):
         """
         self.m_l2PredictionCost = self.leastSquaresCost(self.m_vertexPredictions, self.m_vertexLabels)
         if (self.m_usingMomentumTrainer == True):
-            print('initializing momentum minimizer for l2 cost : UNet for SFT')
+            print('UNetForSFT :initializing momentum minimizer for l2 cost ')
             self.m_minimizeL2CostMomentum = self.m_momentumTrainer.minimize(self.m_l2PredictionCost, name='UNetToTrainForSFT_m_minimizeL2CostMomentum')
         if (self.m_usingAdamTrainer == True):
-            print('initializing adam minimizer for l2 cost : UNet for SFT')
+            print('UNetForSFT :initializing adam minimizer for l2 cost ')
             self.m_minimizeL2CostAdam = self.m_adamTrainer.minimize(self.m_l2PredictionCost, name='UNetToTrainForSFT_m_minimizeL2CostAdam')
+        if (self.m_usingSgdTrainer == True):
+            print('UNetForSFT : initializing grad. descent minimizer for l2 cost')
+            self.m_minimizeL2CostSgd = self.m_sgdTrainer.minimize(self.m_l2PredictionCost, name='UNetToTrainForSFT_m_minimizeL2CostSgd')
 
     def getVertexPredictions(self, uNetOutput):
         """

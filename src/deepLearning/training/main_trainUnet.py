@@ -27,20 +27,20 @@ import datetime as dt
 # params to control training
 nEpochs = 5
 trainBatchSize = 4
-restoreCkptFileDir = './tf-saves/' # '' implies start training from scratch
+restoreCkptFileDir = ''#'./tf-saves/' # '' implies start training from scratch
 restoreDataHandlerCache = './~dataHandlerCache.npy'
 #-------------------------------------------
 
 # setup data handler
 DH = ImageDataHandler_forSFT()
-DH.initFromCache(restoreDataHandlerCache)
-#DH.setDataDir('../../../data/training_defRenders')
-#DH.setLabelsDir('../../../data/training_defRenders')
-#DH.setDataExtension('.png')
-#DH.setLabelsExtension('.npy')
-#DH.setTrainFraction(0.2)
-#DH.setValidationFraction(0.2)
-#DH.buildDataHandlerCache()
+#DH.initFromCache(restoreDataHandlerCache)
+DH.setDataDir('../../../data/training_defRenders')
+DH.setLabelsDir('../../../data/training_defRenders')
+DH.setDataExtension('.png')
+DH.setLabelsExtension('.npy')
+DH.setTrainFraction(0.2)
+DH.setValidationFraction(0.2)
+DH.buildDataHandlerCache()
 
 print('total number of data points in the train set = ', DH.getTrainDataSize())
 
@@ -75,8 +75,7 @@ class SessionWithExitSave(tf.Session):
 #----------------------------
 with tf.Graph().as_default():
     myUnet.initializeWeights()
-    myUnet.initializeMomentumOptimizer()
-    myUnet.initializeAdamOptimizer()
+    myUnet.initializeSgdOptimizer()
     myUnet.initializePerVertexl2Cost()
         
     saver = tf.train.Saver()
@@ -102,7 +101,7 @@ with tf.Graph().as_default():
             feed_dict = {myUnet.m_inputStack:data, myUnet.m_vertexLabels:labels}
             cost = sess.run(myUnet.m_l2PredictionCost, feed_dict=feed_dict)    
     
-            sess.run(myUnet.m_minimizeL2CostMomentum, feed_dict=feed_dict)
+            sess.run(myUnet.m_minimizeL2CostSgd, feed_dict=feed_dict)
             print('Epoch : ', T.getTrainEpochCounter(), \
                   ' Batch : ', T.getTrainBatchCounter(),\
                   '/', T.getNMaxTrainBatches(), ' cost : ', cost)      
@@ -111,7 +110,7 @@ with tf.Graph().as_default():
             if (np.mod(T.getTrainBatchCounter(), 1000) == 0):
                 save_time = dt.datetime.now().strftime('%Y%m%d-%H.%M.%S')
                 saver.save(sess, './tf-saves/mnist-{save_time}.ckpt')
-     
+#     
 
 
             
