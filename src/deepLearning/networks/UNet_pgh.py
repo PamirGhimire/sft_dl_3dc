@@ -6,6 +6,10 @@ UNet class or a UNet class that might be used for just making inference
 import tensorflow as tf
 from abc import ABC, abstractmethod
 
+import os
+import cv2
+import numpy as np
+
 class UNet(ABC): #inherit from ABC : Abstract Base Class
     """
     This is an abstract class!
@@ -72,7 +76,7 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         self.m_inputImageWidth = 480;
         self.m_inputImageHeight = 480;
         self.m_inputChannels = 3
-        self.m_batchNormalization = True
+        self.m_batchNormalization = False
         self.m_inputStack = None
         self.m_unet = None
         
@@ -108,11 +112,11 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     def initializeWeights(self):
         self.m_inputStack = tf.placeholder(tf.float32, \
                                            shape=(None, self.m_inputImageHeight, self.m_inputImageWidth, self.m_inputChannels),\
-                                           name='UNetInputStack')
+                                           name='UNet_m_inputStack')
         self.m_unet = self.UnetArch(self.m_inputStack)
         
     def initializeAdamOptimizer(self):
-        self.m_adamTrainer = tf.train.AdamOptimizer(learning_rate=0.005, name='UNet_AdamOptimizer')
+        self.m_adamTrainer = tf.train.AdamOptimizer(learning_rate=0.005, name='UNet_AdamTrainer')
         self.m_usingAdamTrainer = True
         
     def initializeMomentumOptimizer(self):
@@ -121,8 +125,8 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
         """
         global_step = tf.Variable(0, trainable=False, name='MomentumOptimizerGlobalStep')
         starter_learning_rate = 0.01
-        learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, 1000, 0.96, staircase=True, name='MomentumOptimizerExpDecayLR')
-        self.m_momentumTrainer = tf.train.MomentumOptimizer(learning_rate, 0.9, name = 'UNetMomentumOptimizer')
+        learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, 1000, 0.96, staircase=True, name='UNet_MomentumOptimizerExpDecayLR')
+        self.m_momentumTrainer = tf.train.MomentumOptimizer(learning_rate, 0.9, name = "UNet_m_momentumTrainer")
         self.m_usingMomentumTrainer = True
 
     def UnetArch(self, x):
@@ -236,9 +240,16 @@ class UNet(ABC): #inherit from ABC : Abstract Base Class
     def get_bias(self, name, trainable):
         pass
 
-    # save model
     # load previously saved model
-    
+    @abstractmethod
+    def initializeFromMetaFile(self, pathToMetaFile):
+        assert (os.path.isfile(pathToMetaFile))
+        assert (pathToMetaFile.split('.')[-1] == 'meta')
+        # load the meta file (this function must be called inside a session)
+        # saver = tf.train.import_meta_graph(pathToMetaFile)
+        # restore graph (will be application specific)
+        # recreate ops (will be application specific)
+        
 #---------------------------------------------
 
 class UNetToTrain(UNet):
@@ -289,6 +300,15 @@ class UNetToTrain(UNet):
             pass
 
         
+    def initializeFromMetaFile(self, pathToMetaFile):
+        """
+        Initialize the graph and associate weights with variables with nodes
+        from a previously saved checkpoint/meta file
+        """
+        assert (os.path.isfile(pathToMetaFile))
+        assert (pathToMetaFile.split('.')[-1] == 'meta')
+        pass # ops to be restored depend on the specialization to be trained
+        
 #---------------------------------------------
 class UNetToTrainForSFT(UNetToTrain):
     """
@@ -315,13 +335,16 @@ class UNetToTrainForSFT(UNetToTrain):
     """
     def __init__(self):
         UNetToTrain.__init__(self)
-        self.m_vertexCoordinates = None
+        self.m_vertexLabels = None
         self.m_vertexPredictions = None
         self.m_l2PredictionCost = None # loss for per-vertex error in predicted locations    
         # op for minimizing per-vertex l2 errors in predicted vertex positions using momentum optimizer
         self.m_minimizeL2CostMomentum = None  
         # op for minimizing per-vertex l2 errors in predicted vertex positions using adam optimizer
         self.m_minimizeL2CostAdam = None
+
+        self.m_metaFileDir = ''
+        self.m_saver = None
 
        # weights specific to this specialization, for predicting 3D coords of 
         # vertices of a template given the output feature maps of a u-net
@@ -340,8 +363,7 @@ class UNetToTrainForSFT(UNetToTrain):
         # labels are in a 33x65 grid (w x h)
         self.m_gridWidth = 65
         self.m_gridHeight = 33
-        self.m_vertexLabels = tf.placeholder(tf.float32, shape=(None, self.m_gridHeight, self.m_gridWidth, 3), name='vertexLabels')
-        self.m_vertexPredictions = tf.placeholder(tf.float32, shape=(None, 480, 480, 3), name='vertexPredictions')
+        self.m_vertexLabels = tf.placeholder(tf.float32, shape=(None, self.m_gridHeight, self.m_gridWidth, 3), name='UNetToTrainForSFT_m_vertexLabels')
 
         self.m_vertexPredictions = self.getVertexPredictions(self.m_unet)
        
@@ -353,10 +375,10 @@ class UNetToTrainForSFT(UNetToTrain):
         self.m_l2PredictionCost = self.leastSquaresCost(self.m_vertexPredictions, self.m_vertexLabels)
         if (self.m_usingMomentumTrainer == True):
             print('initializing momentum minimizer for l2 cost : UNet for SFT')
-            self.m_minimizeL2CostMomentum = self.m_momentumTrainer.minimize(self.m_l2PredictionCost, name='UNetSFT_l2MinMomentumOp')
+            self.m_minimizeL2CostMomentum = self.m_momentumTrainer.minimize(self.m_l2PredictionCost, name='UNetToTrainForSFT_m_minimizeL2CostMomentum')
         if (self.m_usingAdamTrainer == True):
             print('initializing adam minimizer for l2 cost : UNet for SFT')
-            self.m_minimizeL2CostAdam = self.m_adamTrainer.minimize(self.m_l2PredictionCost, name='UNetSFT_l2MinAdamOp')
+            self.m_minimizeL2CostAdam = self.m_adamTrainer.minimize(self.m_l2PredictionCost, name='UNetToTrainForSFT_m_minimizeL2CostAdam')
 
     def getVertexPredictions(self, uNetOutput):
         """
@@ -379,10 +401,24 @@ class UNetToTrainForSFT(UNetToTrain):
         
         """
         print('l2 cost from predicted vertex locaitons')
-        cost = tf.nn.l2_loss(vertexPredictions[:,0:self.m_gridHeight, 0:self.m_gridWidth, 0:3] - vertexLabels, name='l2LossUNetForSFT')
+        cost = tf.nn.l2_loss(vertexPredictions[:,0:self.m_gridHeight, 0:self.m_gridWidth, 0:3] - vertexLabels, name='UNetToTrainForSFT_m_l2PredictionCost')
         return cost
-        
-
+   
+#----------------------------
+# Utility function :
+def resizeImagesForUnet(imageStack, newWidth=480, newHeight=480):
+    """
+    imageStack is a 4D tensor (or numpy array) with format (n, h, w, c)
+    """
+    assert (len(imageStack.shape) == 4)
+    resizedStack = []
+    for nim in range(imageStack.shape[0]):
+        resizedIm = cv2.resize(imageStack[nim,:,:,:], (newWidth, newHeight))
+        resizedStack.append(resizedIm)
+    resizedStack = np.array(resizedStack)
+    return resizedStack
+     
+       
 #---------------------------------------------
 ##How to use: (sample code)
 ##Test Code : How to use UNetToTrain/UNetToPredict

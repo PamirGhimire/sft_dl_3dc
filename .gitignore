@@ -3,3 +3,4 @@ data/
 *.mtl
 tf_unet/
 ~*
+tf-saves/

@@ -15,6 +15,7 @@ sys.path.append('../dataHandling/')
 from UNet_pgh import UNet
 from UNet_pgh import UNetToTrainForSFT
 from dataHandler_pgh import ImageDataHandler_forSFT
+from UNet_pgh import resizeImagesForUnet
 from trainer_pgh import Trainer
 
 # external libraries
@@ -23,10 +24,16 @@ import cv2
 import numpy as np
 import datetime as dt
 #-------------------------------------------
+# params to control training
+nEpochs = 5
+trainBatchSize = 4
+restoreCkptFileDir = './tf-saves/' # '' implies start training from scratch
+restoreDataHandlerCache = './~dataHandlerCache.npy'
+#-------------------------------------------
 
 # setup data handler
 DH = ImageDataHandler_forSFT()
-DH.initFromCache('~dataHandlerCache.npy')
+DH.initFromCache(restoreDataHandlerCache)
 #DH.setDataDir('../../../data/training_defRenders')
 #DH.setLabelsDir('../../../data/training_defRenders')
 #DH.setDataExtension('.png')
@@ -42,27 +49,14 @@ T = Trainer()
 T.setDataHandler(DH)
 
 # training
-T.setTrainBatchSize(4)
+T.setTrainBatchSize(trainBatchSize)
 
 # setup unet
 myUnet = UNetToTrainForSFT()
 myUnet.setInitFromScratch(True)
 
 # training loop
-nEpochs = 5
 costTable = [] #epoch, iteration, cost
-
-def resizeImagesForUnet(imageStack, newWidth=480, newHeight=480):
-    """
-    imageStack is a 4D tensor (or numpy array) with format (n, h, w, c)
-    """
-    assert (len(imageStack.shape) == 4)
-    resizedStack = []
-    for nim in range(imageStack.shape[0]):
-        resizedIm = cv2.resize(imageStack[nim,:,:,:], (newWidth, newHeight))
-        resizedStack.append(resizedIm)
-    resizedStack = np.array(resizedStack)
-    return resizedStack
 
 #----------------------------
 # for saving training progress at keyboard interrupt
@@ -84,11 +78,17 @@ with tf.Graph().as_default():
     myUnet.initializeMomentumOptimizer()
     myUnet.initializeAdamOptimizer()
     myUnet.initializePerVertexl2Cost()
+        
     saver = tf.train.Saver()
 
     with SessionWithExitSave(saver=saver, exit_save_path='./tf-saves/_lastest.ckpt') as sess:    
-    #with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+        if (restoreCkptFileDir != ''):    
+            saver.restore(sess, tf.train.latest_checkpoint(restoreCkptFileDir))
+        else:
+            sess.run(tf.global_variables_initializer())
+            
+        allGlobalVars = tf.global_variables()
+        allOps = tf.get_default_graph().get_operations()
 
         while (T.getTrainEpochCounter() < nEpochs):
             # get paths to next batch of data and labels
@@ -107,22 +107,13 @@ with tf.Graph().as_default():
                   ' Batch : ', T.getTrainBatchCounter(),\
                   '/', T.getNMaxTrainBatches(), ' cost : ', cost)      
             costTable.append([T.getTrainEpochCounter(), T.getTrainBatchCounter(), cost])
-            #save_time = dt.datetime.now().strftime('%Y%m%d-%H.%M.%S')
-            #saver.save(sess, './tf-saves/mnist-{save_time}.ckpt')
+            
+            if (np.mod(T.getTrainBatchCounter(), 1000) == 0):
+                save_time = dt.datetime.now().strftime('%Y%m%d-%H.%M.%S')
+                saver.save(sess, './tf-saves/mnist-{save_time}.ckpt')
      
-#---------------
-## for testing labels
-#import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
-#
-#label0 = labels[0,:,:,:]
-#fig = plt.figure()
-#ax = fig.add_subplot(111, projection='3d')
-#ax.scatter(label0[:,:,0], label0[:,:,1], label0[:,:,2])
-#plt.show()
-    
-            
-            
+
+
             
             
             
